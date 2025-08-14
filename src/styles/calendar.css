@@ -1,0 +1,146 @@
+/* React Big Calendar custom styles */
+.rbc-calendar {
+  font-family: inherit;
+}
+
+.rbc-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.rbc-toolbar button {
+  background: hsl(var(--secondary));
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--secondary-foreground));
+  padding: 0.5rem 1rem;
+  border-radius: calc(var(--radius) - 2px);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.rbc-toolbar button:hover {
+  background: hsl(var(--muted));
+}
+
+.rbc-toolbar button.rbc-active {
+  background: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+  border-color: hsl(var(--primary));
+}
+
+.rbc-month-view {
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.rbc-header {
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+  font-weight: 600;
+  padding: 0.75rem 0.5rem;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.rbc-day-bg {
+  border-right: 1px solid hsl(var(--border));
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.rbc-day-bg.rbc-today {
+  background: hsl(var(--water-light));
+}
+
+.rbc-date-cell {
+  padding: 0.5rem;
+  color: hsl(var(--muted-foreground));
+  font-weight: 500;
+}
+
+.rbc-date-cell.rbc-today {
+  color: hsl(var(--primary));
+  font-weight: 700;
+}
+
+.rbc-event {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border: none;
+  border-radius: 4px;
+  padding: 2px 5px;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.rbc-event:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.rbc-event.rbc-selected {
+  background: hsl(var(--accent));
+}
+
+.rbc-show-more {
+  color: hsl(var(--primary));
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 2px;
+  text-decoration: underline;
+}
+
+.rbc-show-more:hover {
+  color: hsl(var(--accent));
+}
+
+/* Week and Day views */
+.rbc-time-view {
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+}
+
+.rbc-time-header {
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.rbc-time-content {
+  background: hsl(var(--background));
+}
+
+.rbc-time-slot {
+  border-top: 1px solid hsl(var(--border));
+}
+
+.rbc-current-time-indicator {
+  background: hsl(var(--primary));
+  height: 2px;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+  .rbc-toolbar {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .rbc-toolbar-label {
+    font-size: 1rem;
+    order: -1;
+  }
+  
+  .rbc-btn-group {
+    display: flex;
+    gap: 0.25rem;
+  }
+  
+  .rbc-event {
+    font-size: 0.6rem;
+    padding: 1px 3px;
+  }
+}
