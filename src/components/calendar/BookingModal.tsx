@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CalendarEvent, BookingData, Customer } from "@/types/booking";
-import { mockBoats, mockCaptains } from "@/data/mockData";
+import { boats, captains, bookings } from "@/data/dataService";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2 } from "lucide-react";
 
@@ -60,15 +60,66 @@ export function BookingModal({
 
   const isEditMode = !!selectedEvent;
 
-  // Filter boats by capacity
-  const availableBoats = mockBoats.filter(boat => 
-    boat.available && boat.capacity >= participants
-  );
+  // Helper function to check if dates overlap
+  const datesOverlap = (start1: Date, end1: Date, start2: Date, end2: Date) => {
+    return start1 < end2 && end1 > start2;
+  };
 
-  // Filter captains by selected boat
-  const availableCaptains = mockCaptains.filter(captain =>
-    selectedBoatId ? captain.availableBoats.includes(selectedBoatId) : true
-  );
+  // Get selected time range
+  const selectedStartTime = startDate ? new Date(startDate) : null;
+  const selectedEndTime = endDate ? new Date(endDate) : null;
+
+  // Filter boats by capacity and availability during selected time
+  const availableBoats = boats.filter(boat => {
+    if (!boat.available || boat.capacity < participants) {
+      return false;
+    }
+
+    // Skip time overlap check if no time selected yet
+    if (!selectedStartTime || !selectedEndTime) {
+      return true;
+    }
+
+    // Check if boat is already booked during selected time
+    const isBoatBooked = bookings.some(booking => {
+      // Skip current booking if editing
+      if (isEditMode && selectedEvent && booking.id === selectedEvent.resource.id) {
+        return false;
+      }
+      
+      return booking.boatId === boat.id && 
+             booking.status === 'confirmed' &&
+             datesOverlap(selectedStartTime, selectedEndTime, booking.startDate, booking.endDate);
+    });
+
+    return !isBoatBooked;
+  });
+
+  // Filter captains by selected boat and availability during selected time
+  const availableCaptains = captains.filter(captain => {
+    if (selectedBoatId && !captain.availableBoats.includes(selectedBoatId)) {
+      return false;
+    }
+
+    // Skip time overlap check if no time selected yet
+    if (!selectedStartTime || !selectedEndTime) {
+      return selectedBoatId ? captain.availableBoats.includes(selectedBoatId) : true;
+    }
+
+    // Check if captain is already booked during selected time
+    const isCaptainBooked = bookings.some(booking => {
+      // Skip current booking if editing
+      if (isEditMode && selectedEvent && booking.id === selectedEvent.resource.id) {
+        return false;
+      }
+      
+      return booking.captainId === captain.id && 
+             booking.status === 'confirmed' &&
+             datesOverlap(selectedStartTime, selectedEndTime, booking.startDate, booking.endDate);
+    });
+
+    return !isCaptainBooked;
+  });
 
   useEffect(() => {
     if (selectedSlot) {

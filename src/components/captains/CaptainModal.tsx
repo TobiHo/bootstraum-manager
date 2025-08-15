@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Captain } from "@/types/booking";
-import { mockBoats } from "@/data/mockData";
+import { boats } from "@/data/dataService";
 import { useToast } from "@/hooks/use-toast";
 import { X } from "lucide-react";
 
@@ -234,7 +234,7 @@ export function CaptainModal({ isOpen, onClose, captain, onSave }: CaptainModalP
               Wählen Sie die Boote aus, die dieser Bootsführer bedienen kann.
             </p>
             <div className="space-y-2">
-              {mockBoats.map((boat) => (
+              {boats.map((boat) => (
                 <div key={boat.id} className="flex items-center space-x-2">
                   <Checkbox
                     id={`boat-${boat.id}`}
