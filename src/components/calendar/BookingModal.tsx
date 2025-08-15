@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CalendarEvent, BookingData, Customer } from "@/types/booking";
-import { mockBoats, mockCaptains, mockBookings } from "@/data/mockData";
+import { boats, captains, bookings } from "@/data/dataService";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2 } from "lucide-react";
 
@@ -70,7 +70,7 @@ export function BookingModal({
   const selectedEndTime = endDate ? new Date(endDate) : null;
 
   // Filter boats by capacity and availability during selected time
-  const availableBoats = mockBoats.filter(boat => {
+  const availableBoats = boats.filter(boat => {
     if (!boat.available || boat.capacity < participants) {
       return false;
     }
@@ -81,7 +81,7 @@ export function BookingModal({
     }
 
     // Check if boat is already booked during selected time
-    const isBoatBooked = mockBookings.some(booking => {
+    const isBoatBooked = bookings.some(booking => {
       // Skip current booking if editing
       if (isEditMode && selectedEvent && booking.id === selectedEvent.resource.id) {
         return false;
@@ -96,7 +96,7 @@ export function BookingModal({
   });
 
   // Filter captains by selected boat and availability during selected time
-  const availableCaptains = mockCaptains.filter(captain => {
+  const availableCaptains = captains.filter(captain => {
     if (selectedBoatId && !captain.availableBoats.includes(selectedBoatId)) {
       return false;
     }
@@ -107,7 +107,7 @@ export function BookingModal({
     }
 
     // Check if captain is already booked during selected time
-    const isCaptainBooked = mockBookings.some(booking => {
+    const isCaptainBooked = bookings.some(booking => {
       // Skip current booking if editing
       if (isEditMode && selectedEvent && booking.id === selectedEvent.resource.id) {
         return false;

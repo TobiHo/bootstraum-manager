@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Users, Ship, Mail, Phone, Edit, Trash2 } from "lucide-react";
 import { Captain } from "@/types/booking";
-import { mockCaptains, mockBoats } from "@/data/mockData";
+import { captains as initialCaptains, boats } from "@/data/dataService";
 import { CaptainModal } from "@/components/captains/CaptainModal";
 
 export default function Captains() {
-  const [captains, setCaptains] = useState<Captain[]>(mockCaptains);
+  const [captains, setCaptains] = useState<Captain[]>(initialCaptains);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCaptain, setSelectedCaptain] = useState<Captain | null>(null);
 
@@ -47,7 +47,7 @@ export default function Captains() {
 
   const getBoatNames = (boatIds: string[]) => {
     return boatIds
-      .map(id => mockBoats.find(boat => boat.id === id)?.name)
+      .map(id => boats.find(boat => boat.id === id)?.name)
       .filter(Boolean)
       .join(", ");
   };

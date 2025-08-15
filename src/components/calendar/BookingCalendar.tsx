@@ -6,7 +6,7 @@ import "react-big-calendar/lib/css/react-big-calendar.css";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookingModal } from "./BookingModal";
 import { CalendarEvent, BookingData } from "@/types/booking";
-import { mockBookings } from "@/data/mockData";
+import { bookings as initialBookings } from "@/data/dataService";
 import { cn } from "@/lib/utils";
 
 // Setup German locale
@@ -30,7 +30,7 @@ const messages = {
 };
 
 export function BookingCalendar() {
-  const [bookings, setBookings] = useState<BookingData[]>(mockBookings);
+  const [bookings, setBookings] = useState<BookingData[]>(initialBookings);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<{ start: Date; end: Date } | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);

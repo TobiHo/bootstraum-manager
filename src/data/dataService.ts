@@ -1,6 +1,6 @@
 import { Boat, Captain, BookingData } from "@/types/booking";
 
-export const mockBoats: Boat[] = [
+export const boats: Boat[] = [
   {
     id: "1",
     name: "MS Nordhorn",
@@ -35,7 +35,7 @@ export const mockBoats: Boat[] = [
   }
 ];
 
-export const mockCaptains: Captain[] = [
+export const captains: Captain[] = [
   {
     id: "1",
     name: "Klaus Müller",
@@ -62,7 +62,7 @@ export const mockCaptains: Captain[] = [
   }
 ];
 
-export const mockBookings: BookingData[] = [
+export const bookings: BookingData[] = [
   {
     id: "1",
     startDate: new Date(2024, 7, 15, 10, 0),

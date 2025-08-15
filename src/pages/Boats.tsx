@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Ship, Users, Edit, Trash2 } from "lucide-react";
 import { Boat } from "@/types/booking";
-import { mockBoats } from "@/data/mockData";
+import { boats as initialBoats } from "@/data/dataService";
 import { BoatModal } from "@/components/boats/BoatModal";
 
 export default function Boats() {
-  const [boats, setBoats] = useState<Boat[]>(mockBoats);
+  const [boats, setBoats] = useState<Boat[]>(initialBoats);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBoat, setSelectedBoat] = useState<Boat | null>(null);
 
