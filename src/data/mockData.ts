@@ -38,26 +38,66 @@ export const mockBoats: Boat[] = [
 export const mockCaptains: Captain[] = [
   {
     id: "1",
-    name: "Klaus Müller",
-    email: "k.mueller@bootstour.de",
+    name: "Heinz-Jürgen Bruns",
+    email: "h.j.bruns@vechteboot.de",
     phone: "+49 5921 123456",
-    certifications: ["Sportbootführerschein See", "Funkzeugnis"],
-    availableBoats: ["1", "2", "3"]
+    certifications: ["Sportbootführerschein Binnen"],
+    availableBoats: ["1", "2", "3", "4"]
   },
   {
     id: "2",
     name: "Andrea Schmidt",
-    email: "a.schmidt@bootstour.de", 
+    email: "a.schmidt@vechteboot.de",
     phone: "+49 5921 234567",
-    certifications: ["Sportbootführerschein Binnen", "Erste Hilfe"],
-    availableBoats: ["2", "3", "4"]
+    certifications: ["Sportbootführerschein Binnen"],
+    availableBoats: ["1", "2", "3", "4"]
   },
   {
     id: "3",
+    name: "Klaus Müller",
+    email: "k.mueller@vechteboot.de",
+    phone: "+49 5921 345678",
+    certifications: ["Sportbootführerschein Binnen"],
+    availableBoats: ["1", "2", "3", "4"]
+  },
+  {
+    id: "4",
     name: "Thomas Weber",
-    email: "t.weber@bootstour.de",
-    phone: "+49 5921 345678", 
-    certifications: ["Kapitänspatent", "Funkzeugnis", "Erste Hilfe"],
+    email: "t.weber@vechteboot.de",
+    phone: "+49 5921 456789",
+    certifications: ["Sportbootführerschein Binnen"],
+    availableBoats: ["1", "2", "3", "4"]
+  },
+  {
+    id: "5",
+    name: "Gerd Korte",
+    email: "g.korte@vechteboot.de",
+    phone: "+49 5921 567890",
+    certifications: ["Sportbootführerschein Binnen"],
+    availableBoats: ["1", "2", "3", "4"]
+  },
+  {
+    id: "6",
+    name: "Wilhelm Lammers",
+    email: "w.lammers@vechteboot.de",
+    phone: "+49 5921 678901",
+    certifications: ["Sportbootführerschein Binnen"],
+    availableBoats: ["1", "2", "3", "4"]
+  },
+  {
+    id: "7",
+    name: "Rainer Lammers",
+    email: "r.lammers@vechteboot.de",
+    phone: "+49 5921 789012",
+    certifications: ["Sportbootführerschein Binnen"],
+    availableBoats: ["1", "2", "3", "4"]
+  },
+  {
+    id: "8",
+    name: "Heinz Lammers",
+    email: "h.lammers@vechteboot.de",
+    phone: "+49 5921 890123",
+    certifications: ["Sportbootführerschein Binnen"],
     availableBoats: ["1", "2", "3", "4"]
   }
 ];
