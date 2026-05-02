@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     """Application settings from environment variables"""
 
     # Database Configuration
-    database_url: str = "postgresql://boattour:boattour_password@localhost:5432/boattour_db"
+    database_url: str = "sqlite:///./boattour.db"
 
     # JWT Configuration
     jwt_secret_key: str = "your-secret-key-change-in-production"
