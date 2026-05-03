@@ -2,13 +2,16 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { 
-  Calendar, 
-  Ship, 
-  Users, 
-  Menu, 
-  X 
+import {
+  Calendar,
+  Ship,
+  Users,
+  Menu,
+  X,
+  LogOut
 } from "lucide-react";
+import { useAuthContext } from "../../contexts/AuthContext";
+import { useAuth } from "../../hooks/useAuth";
 
 const navigation = [
   { name: "Kalender", href: "/", icon: Calendar },
@@ -19,6 +22,8 @@ const navigation = [
 export function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const { user } = useAuthContext();
+  const { logout } = useAuth();
 
   return (
     <nav className="fixed top-0 w-full bg-white shadow-card z-50">
@@ -38,7 +43,7 @@ export function Navigation() {
             {navigation.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.href;
-              
+
               return (
                 <Link key={item.name} to={item.href}>
                   <Button
@@ -54,6 +59,24 @@ export function Navigation() {
                 </Link>
               );
             })}
+          </div>
+
+          {/* User Info and Logout */}
+          <div className="hidden md:flex items-center space-x-4">
+            {user && (
+              <>
+                <span className="text-sm text-gray-700">{user.name}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={logout}
+                  className="flex items-center space-x-2"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>Logout</span>
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Mobile menu button */}
