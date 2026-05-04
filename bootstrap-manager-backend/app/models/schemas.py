@@ -183,6 +183,7 @@ class BookingCreate(BaseModel):
     customer_name: str = Field(..., min_length=1, max_length=255)
     customer_email: EmailStr
     customer_phone: str = Field(..., min_length=1, max_length=20)
+    tour_type: Optional[str] = Field(None, max_length=50)
     notes: Optional[str] = Field(None, max_length=1000)
 
 
@@ -197,6 +198,7 @@ class BookingUpdate(BaseModel):
     customer_name: Optional[str] = Field(None, min_length=1, max_length=255)
     customer_email: Optional[EmailStr] = None
     customer_phone: Optional[str] = Field(None, min_length=1, max_length=20)
+    tour_type: Optional[str] = Field(None, max_length=50)
     status: Optional[BookingStatus] = None
     notes: Optional[str] = Field(None, max_length=1000)
 
@@ -214,6 +216,7 @@ class BookingResponse(BaseModel):
     customer_name: str
     customer_email: str
     customer_phone: str
+    tour_type: Optional[str]
     status: BookingStatus
     notes: Optional[str]
     created_at: datetime

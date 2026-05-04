@@ -11,7 +11,8 @@ import {
   X,
   LogOut,
   User,
-  Settings
+  Settings,
+  BarChart3
 } from "lucide-react";
 
 const navigation = [
@@ -21,6 +22,7 @@ const navigation = [
 ];
 
 const adminNavigation = [
+  { name: "Berichte", href: "/reports", icon: BarChart3 },
   { name: "Benutzer", href: "/users", icon: Settings },
 ];
 

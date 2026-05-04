@@ -33,6 +33,7 @@ export interface BookingData {
   captainId: string;
   catering: boolean;
   notes?: string;
+  tourType?: string;
   status: 'confirmed' | 'pending' | 'cancelled';
   createdAt: Date;
 }

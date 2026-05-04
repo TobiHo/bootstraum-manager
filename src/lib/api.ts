@@ -39,6 +39,7 @@ type ApiBooking = {
   customer_name: string;
   customer_email: string;
   customer_phone: string;
+  tour_type?: string | null;
   status: "confirmed" | "pending" | "cancelled";
   notes?: string | null;
   created_at: string;
@@ -105,6 +106,7 @@ const toBooking = (booking: ApiBooking): BookingData => ({
   captainId: booking.captain_id ? String(booking.captain_id) : "",
   catering: false,
   notes: booking.notes ?? "",
+  tourType: booking.tour_type ?? undefined,
   status: booking.status,
   createdAt: new Date(booking.created_at),
 });
@@ -133,6 +135,7 @@ const bookingPayload = (booking: Omit<BookingData, "id" | "createdAt">) => ({
   customer_name: booking.customer.name,
   customer_email: booking.customer.email,
   customer_phone: booking.customer.phone,
+  tour_type: booking.tourType || null,
   notes: booking.notes,
   status: booking.status,
 });

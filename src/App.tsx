@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import Boats from "./pages/Boats";
 import Captains from "./pages/Captains";
 import Users from "./pages/Users";
+import Reports from "./pages/Reports";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
@@ -27,6 +28,7 @@ const App = () => (
             <Route path="/boats" element={<ProtectedRoute><Boats /></ProtectedRoute>} />
             <Route path="/captains" element={<ProtectedRoute><Captains /></ProtectedRoute>} />
             <Route path="/users" element={<ProtectedRoute requireAdmin><Users /></ProtectedRoute>} />
+            <Route path="/reports" element={<ProtectedRoute requireAdmin><Reports /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

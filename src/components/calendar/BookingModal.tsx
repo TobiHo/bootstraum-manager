@@ -19,9 +19,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Card } from "@/components/ui/card";
 import { Boat, CalendarEvent, BookingData, Captain, Customer } from "@/types/booking";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2 } from "lucide-react";
+import { TOUR_TYPES, calculatePrice, getDurationHours, formatPrice } from "@/lib/pricing";
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -62,6 +64,7 @@ export function BookingModal({
   const [notes, setNotes] = useState<string>("");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
+  const [tourType, setTourType] = useState<string>("");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const isEditMode = !!selectedEvent;
@@ -139,6 +142,7 @@ export function BookingModal({
       setSelectedCaptainId(booking.captainId);
       setCatering(booking.catering);
       setNotes(booking.notes || "");
+      setTourType(booking.tourType || "");
       setStartDate(format(booking.startDate, "yyyy-MM-dd'T'HH:mm"));
       setEndDate(format(booking.endDate, "yyyy-MM-dd'T'HH:mm"));
     }
@@ -151,6 +155,7 @@ export function BookingModal({
     setSelectedCaptainId("");
     setCatering(false);
     setNotes("");
+    setTourType("");
     setStartDate("");
     setEndDate("");
     setErrors({});
@@ -204,6 +209,7 @@ export function BookingModal({
       captainId: selectedCaptainId,
       catering,
       notes,
+      tourType,
       status: "confirmed"
     };
 
@@ -346,6 +352,35 @@ export function BookingModal({
             {errors.participants && <p className="text-xs text-destructive mt-1">{errors.participants}</p>}
           </div>
 
+          {/* Tourtyp-Auswahl */}
+          <div>
+            <Label htmlFor="tourType">Tourtyp</Label>
+            <Select value={tourType} onValueChange={setTourType}>
+              <SelectTrigger>
+                <SelectValue placeholder="Tourtyp auswählen (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                {TOUR_TYPES.map(type => (
+                  <SelectItem key={type.value} value={type.value}>
+                    {type.label} - {type.pricingHint}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Pricing Display */}
+          {tourType && startDate && endDate && (
+            <Card className="p-4 bg-primary/5 border-primary/20">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-foreground">Geschätzter Preis:</span>
+                <span className="text-lg font-bold text-primary">
+                  {formatPrice(calculatePrice(tourType, participants, boats.find(b => b.id === selectedBoatId)?.capacity || 25, getDurationHours(startDate, endDate)))}
+                </span>
+              </div>
+            </Card>
+          )}
+
           {/* Boot-Auswahl */}
           <div>
             <Label htmlFor="boat">Boot auswählen *</Label>
@@ -369,6 +404,30 @@ export function BookingModal({
               <p className="text-sm text-destructive mt-1">
                 Keine Boote für {participants} Personen verfügbar
               </p>
+            )}
+
+            {/* Occupancy Indicator */}
+            {selectedBoatId && (
+              <div className="mt-3 p-3 bg-secondary/50 rounded-md">
+                {(() => {
+                  const boat = boats.find(b => b.id === selectedBoatId);
+                  const occupancyPercent = boat ? (participants / boat.capacity) * 100 : 0;
+                  const isWarning = occupancyPercent >= 80;
+                  return (
+                    <>
+                      <p className={`text-sm font-medium ${isWarning ? "text-amber-600" : "text-foreground"}`}>
+                        Kapazität: {participants}/{boat?.capacity} Plätze ({occupancyPercent.toFixed(0)}%)
+                      </p>
+                      <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full transition-all ${isWarning ? "bg-amber-500" : "bg-primary"}`}
+                          style={{ width: `${Math.min(occupancyPercent, 100)}%` }}
+                        />
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
             )}
           </div>
 

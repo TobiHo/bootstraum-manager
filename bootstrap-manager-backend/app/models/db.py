@@ -124,6 +124,7 @@ class Booking(Base):
     customer_name = Column(String(255), nullable=False)
     customer_email = Column(String(255), nullable=False)
     customer_phone = Column(String(20), nullable=False)
+    tour_type = Column(String(50), nullable=True)
     status = Column(Enum(BookingStatus), default=BookingStatus.PENDING, nullable=False, index=True)
     notes = Column(String(1000))
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
