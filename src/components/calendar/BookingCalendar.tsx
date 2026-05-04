@@ -1,13 +1,14 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Calendar, momentLocalizer, Views } from "react-big-calendar";
 import moment from "moment";
 import "moment/locale/de";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookingModal } from "./BookingModal";
-import { CalendarEvent, BookingData } from "@/types/booking";
-import { bookings as initialBookings } from "@/data/dataService";
+import { Boat, CalendarEvent, BookingData, Captain } from "@/types/booking";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 
 // Setup German locale
 moment.locale("de");
@@ -30,19 +31,39 @@ const messages = {
 };
 
 export function BookingCalendar() {
-  const [bookings, setBookings] = useState<BookingData[]>(initialBookings);
+  const { toast } = useToast();
+  const [bookings, setBookings] = useState<BookingData[]>([]);
+  const [boats, setBoats] = useState<Boat[]>([]);
+  const [captains, setCaptains] = useState<Captain[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<{ start: Date; end: Date } | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
+  useEffect(() => {
+    Promise.all([api.listBookings(), api.listBoats(), api.listCaptains()])
+      .then(([bookingData, boatData, captainData]) => {
+        setBookings(bookingData);
+        setBoats(boatData);
+        setCaptains(captainData);
+      })
+      .catch((error) => toast({
+        title: "Kalenderdaten konnten nicht geladen werden",
+        description: error.message,
+        variant: "destructive",
+      }));
+  }, [toast]);
+
   // Convert bookings to calendar events
-  const events: CalendarEvent[] = bookings.map(booking => ({
-    id: booking.id,
-    title: `${booking.customer.name} (${booking.participants} Pers.)`,
-    start: booking.startDate,
-    end: booking.endDate,
-    resource: booking
-  }));
+  const events: CalendarEvent[] = bookings.map(booking => {
+    const boat = boats.find(b => b.id === booking.boatId);
+    return {
+      id: booking.id,
+      title: `${booking.customer.name} • ${boat?.name || 'Boot'} (${booking.participants} P.)`,
+      start: booking.startDate,
+      end: booking.endDate,
+      resource: booking
+    };
+  });
 
   const handleSelectSlot = useCallback(({ start, end }: { start: Date; end: Date }) => {
     setSelectedSlot({ start, end });
@@ -56,56 +77,85 @@ export function BookingCalendar() {
     setIsModalOpen(true);
   }, []);
 
-  const handleSaveBooking = useCallback((bookingData: Omit<BookingData, 'id' | 'createdAt'>) => {
-    const newBooking: BookingData = {
-      ...bookingData,
-      id: Date.now().toString(),
-      createdAt: new Date()
-    };
-    
-    setBookings(prev => [...prev, newBooking]);
-    setIsModalOpen(false);
-    setSelectedSlot(null);
-    setSelectedEvent(null);
-  }, []);
+  const handleSaveBooking = useCallback(async (bookingData: Omit<BookingData, 'id' | 'createdAt'>) => {
+    try {
+      const newBooking = await api.createBooking(bookingData);
+      setBookings(prev => [...prev, newBooking]);
+      setIsModalOpen(false);
+      setSelectedSlot(null);
+      setSelectedEvent(null);
+    } catch (error) {
+      toast({
+        title: "Buchung konnte nicht gespeichert werden",
+        description: error instanceof Error ? error.message : "Unbekannter Fehler",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  }, [toast]);
 
-  const handleUpdateBooking = useCallback((updatedBooking: BookingData) => {
-    setBookings(prev => prev.map(booking => 
-      booking.id === updatedBooking.id ? updatedBooking : booking
-    ));
-    setIsModalOpen(false);
-    setSelectedEvent(null);
-  }, []);
+  const handleUpdateBooking = useCallback(async (updatedBooking: BookingData) => {
+    try {
+      const savedBooking = await api.updateBooking(updatedBooking);
+      setBookings(prev => prev.map(booking => 
+        booking.id === savedBooking.id ? savedBooking : booking
+      ));
+      setIsModalOpen(false);
+      setSelectedEvent(null);
+    } catch (error) {
+      toast({
+        title: "Buchung konnte nicht aktualisiert werden",
+        description: error instanceof Error ? error.message : "Unbekannter Fehler",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  }, [toast]);
 
-  const handleDeleteBooking = useCallback((bookingId: string) => {
-    setBookings(prev => prev.filter(booking => booking.id !== bookingId));
-    setIsModalOpen(false);
-    setSelectedEvent(null);
-  }, []);
+  const handleDeleteBooking = useCallback(async (bookingId: string) => {
+    try {
+      await api.deleteBooking(bookingId);
+      setBookings(prev => prev.filter(booking => booking.id !== bookingId));
+      setIsModalOpen(false);
+      setSelectedEvent(null);
+    } catch (error) {
+      toast({
+        title: "Buchung konnte nicht gelöscht werden",
+        description: error instanceof Error ? error.message : "Unbekannter Fehler",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  }, [toast]);
 
   const eventStyleGetter = (event: CalendarEvent) => {
     const booking = event.resource;
-    let backgroundColor = "hsl(var(--primary))";
-    
+    let backgroundColor = "hsl(210 100% 35%)";
+    let color = "white";
+
     switch (booking.status) {
       case "pending":
-        backgroundColor = "hsl(var(--muted))";
+        backgroundColor = "hsl(38 92% 50%)";
+        color = "white";
         break;
       case "cancelled":
-        backgroundColor = "hsl(var(--destructive))";
+        backgroundColor = "hsl(0 84% 50%)";
+        color = "white";
         break;
       default:
-        backgroundColor = "hsl(var(--primary))";
+        backgroundColor = "hsl(210 100% 35%)";
+        color = "white";
     }
 
     return {
       style: {
         backgroundColor,
-        borderRadius: "4px",
-        opacity: 0.8,
-        color: "white",
-        border: "0px",
-        display: "block"
+        borderRadius: "6px",
+        opacity: 1,
+        color,
+        border: "1px solid rgba(255, 255, 255, 0.3)",
+        display: "block",
+        fontWeight: "500"
       }
     };
   };
@@ -160,6 +210,9 @@ export function BookingCalendar() {
         }}
         selectedSlot={selectedSlot}
         selectedEvent={selectedEvent}
+        boats={boats}
+        captains={captains}
+        bookings={bookings}
         onSave={handleSaveBooking}
         onUpdate={handleUpdateBooking}
         onDelete={handleDeleteBooking}

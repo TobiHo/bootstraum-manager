@@ -1,17 +1,33 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Users, Ship, Mail, Phone, Edit, Trash2 } from "lucide-react";
-import { Captain } from "@/types/booking";
-import { captains as initialCaptains, boats } from "@/data/dataService";
+import { Boat, Captain } from "@/types/booking";
 import { CaptainModal } from "@/components/captains/CaptainModal";
+import { api } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Captains() {
-  const [captains, setCaptains] = useState<Captain[]>(initialCaptains);
+  const { toast } = useToast();
+  const [captains, setCaptains] = useState<Captain[]>([]);
+  const [boats, setBoats] = useState<Boat[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCaptain, setSelectedCaptain] = useState<Captain | null>(null);
+
+  useEffect(() => {
+    Promise.all([api.listCaptains(), api.listBoats()])
+      .then(([captainData, boatData]) => {
+        setCaptains(captainData);
+        setBoats(boatData);
+      })
+      .catch((error) => toast({
+        title: "Stammdaten konnten nicht geladen werden",
+        description: error.message,
+        variant: "destructive",
+      }));
+  }, [toast]);
 
   const handleAddCaptain = () => {
     setSelectedCaptain(null);
@@ -23,26 +39,39 @@ export default function Captains() {
     setIsModalOpen(true);
   };
 
-  const handleSaveCaptain = (captainData: Omit<Captain, 'id'>) => {
-    if (selectedCaptain) {
-      // Update existing captain
-      setCaptains(prev => prev.map(captain => 
-        captain.id === selectedCaptain.id ? { ...captainData, id: selectedCaptain.id } : captain
-      ));
-    } else {
-      // Add new captain
-      const newCaptain: Captain = {
-        ...captainData,
-        id: Date.now().toString()
-      };
-      setCaptains(prev => [...prev, newCaptain]);
+  const handleSaveCaptain = async (captainData: Omit<Captain, 'id'>) => {
+    try {
+      if (selectedCaptain) {
+        const updatedCaptain = await api.updateCaptain(selectedCaptain.id, captainData);
+        setCaptains(prev => prev.map(captain => 
+          captain.id === selectedCaptain.id ? updatedCaptain : captain
+        ));
+      } else {
+        const newCaptain = await api.createCaptain(captainData);
+        setCaptains(prev => [...prev, newCaptain]);
+      }
+      setIsModalOpen(false);
+      setSelectedCaptain(null);
+    } catch (error) {
+      toast({
+        title: "Bootsführer konnte nicht gespeichert werden",
+        description: error instanceof Error ? error.message : "Unbekannter Fehler",
+        variant: "destructive",
+      });
     }
-    setIsModalOpen(false);
-    setSelectedCaptain(null);
   };
 
-  const handleDeleteCaptain = (captainId: string) => {
-    setCaptains(prev => prev.filter(captain => captain.id !== captainId));
+  const handleDeleteCaptain = async (captainId: string) => {
+    try {
+      await api.deleteCaptain(captainId);
+      setCaptains(prev => prev.filter(captain => captain.id !== captainId));
+    } catch (error) {
+      toast({
+        title: "Bootsführer konnte nicht gelöscht werden",
+        description: error instanceof Error ? error.message : "Unbekannter Fehler",
+        variant: "destructive",
+      });
+    }
   };
 
   const getBoatNames = (boatIds: string[]) => {
@@ -158,6 +187,7 @@ export default function Captains() {
             setSelectedCaptain(null);
           }}
           captain={selectedCaptain}
+          boats={boats}
           onSave={handleSaveCaptain}
         />
       </div>

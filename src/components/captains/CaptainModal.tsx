@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Captain } from "@/types/booking";
-import { boats } from "@/data/dataService";
+import { Boat } from "@/types/booking";
 import { useToast } from "@/hooks/use-toast";
 import { X } from "lucide-react";
 
@@ -19,6 +19,7 @@ interface CaptainModalProps {
   isOpen: boolean;
   onClose: () => void;
   captain: Captain | null;
+  boats: Boat[];
   onSave: (captainData: Omit<Captain, 'id'>) => void;
 }
 
@@ -32,7 +33,7 @@ const commonCertifications = [
   "Personenbeförderung"
 ];
 
-export function CaptainModal({ isOpen, onClose, captain, onSave }: CaptainModalProps) {
+export function CaptainModal({ isOpen, onClose, captain, boats, onSave }: CaptainModalProps) {
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: "",

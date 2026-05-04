@@ -146,6 +146,7 @@ class CaptainResponse(BaseModel):
     email: str
     phone: str
     certifications: Optional[str]
+    available_boats: List[int] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 

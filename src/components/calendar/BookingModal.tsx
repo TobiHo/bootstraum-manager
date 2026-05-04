@@ -19,8 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CalendarEvent, BookingData, Customer } from "@/types/booking";
-import { boats, captains, bookings } from "@/data/dataService";
+import { Boat, CalendarEvent, BookingData, Captain, Customer } from "@/types/booking";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2 } from "lucide-react";
 
@@ -29,9 +28,12 @@ interface BookingModalProps {
   onClose: () => void;
   selectedSlot: { start: Date; end: Date } | null;
   selectedEvent: CalendarEvent | null;
-  onSave: (bookingData: Omit<BookingData, 'id' | 'createdAt'>) => void;
-  onUpdate: (bookingData: BookingData) => void;
-  onDelete: (bookingId: string) => void;
+  boats: Boat[];
+  captains: Captain[];
+  bookings: BookingData[];
+  onSave: (bookingData: Omit<BookingData, 'id' | 'createdAt'>) => Promise<void>;
+  onUpdate: (bookingData: BookingData) => Promise<void>;
+  onDelete: (bookingId: string) => Promise<void>;
 }
 
 export function BookingModal({
@@ -39,6 +41,9 @@ export function BookingModal({
   onClose,
   selectedSlot,
   selectedEvent,
+  boats,
+  captains,
+  bookings,
   onSave,
   onUpdate,
   onDelete
@@ -57,6 +62,7 @@ export function BookingModal({
   const [notes, setNotes] = useState<string>("");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const isEditMode = !!selectedEvent;
 
@@ -86,9 +92,9 @@ export function BookingModal({
       if (isEditMode && selectedEvent && booking.id === selectedEvent.resource.id) {
         return false;
       }
-      
-      return booking.boatId === boat.id && 
-             booking.status === 'confirmed' &&
+
+      return booking.boatId === boat.id &&
+             booking.status !== 'cancelled' &&
              datesOverlap(selectedStartTime, selectedEndTime, booking.startDate, booking.endDate);
     });
 
@@ -112,9 +118,9 @@ export function BookingModal({
       if (isEditMode && selectedEvent && booking.id === selectedEvent.resource.id) {
         return false;
       }
-      
-      return booking.captainId === captain.id && 
-             booking.status === 'confirmed' &&
+
+      return booking.captainId === captain.id &&
+             booking.status !== 'cancelled' &&
              datesOverlap(selectedStartTime, selectedEndTime, booking.startDate, booking.endDate);
     });
 
@@ -147,6 +153,7 @@ export function BookingModal({
     setNotes("");
     setStartDate("");
     setEndDate("");
+    setErrors({});
   };
 
   const handleClose = () => {
@@ -154,11 +161,35 @@ export function BookingModal({
     onClose();
   };
 
-  const handleSave = () => {
-    if (!customer.name || !customer.email || !customer.phone || !selectedBoatId || !selectedCaptainId) {
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (!startDate) newErrors.startDate = "Startzeit erforderlich";
+    if (!endDate) newErrors.endDate = "Endzeit erforderlich";
+    if (startDate && endDate && new Date(startDate) >= new Date(endDate)) {
+      newErrors.endDate = "Endzeit muss nach Startzeit liegen";
+    }
+
+    if (!customer.name?.trim()) newErrors.customerName = "Name erforderlich";
+    if (!customer.email?.trim()) newErrors.customerEmail = "E-Mail erforderlich";
+    else if (!customer.email.includes("@")) newErrors.customerEmail = "Gültige E-Mail erforderlich";
+    if (!customer.phone?.trim()) newErrors.customerPhone = "Telefon erforderlich";
+
+    if (participants < 1) newErrors.participants = "Mindestens 1 Teilnehmer erforderlich";
+    if (!selectedBoatId) newErrors.boatId = "Boot erforderlich";
+    if (!selectedCaptainId) newErrors.captainId = "Bootsführer erforderlich";
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSave = async () => {
+    if (!validateForm()) {
+      const firstErrorKey = Object.keys(errors)[0];
+      document.getElementById(firstErrorKey)?.focus?.();
       toast({
-        title: "Fehler",
-        description: "Bitte füllen Sie alle Pflichtfelder aus.",
+        title: "Validierungsfehler",
+        description: "Bitte überprüfen Sie die markierten Felder.",
         variant: "destructive"
       });
       return;
@@ -176,8 +207,17 @@ export function BookingModal({
       status: "confirmed"
     };
 
+    // Warn if booking is in the past
+    if (bookingData.startDate < new Date()) {
+      toast({
+        title: "Warnung",
+        description: "Diese Buchung liegt in der Vergangenheit. Sie können sie trotzdem speichern.",
+        variant: "default"
+      });
+    }
+
     if (isEditMode && selectedEvent) {
-      onUpdate({
+      await onUpdate({
         ...bookingData,
         id: selectedEvent.resource.id,
         createdAt: selectedEvent.resource.createdAt
@@ -187,17 +227,18 @@ export function BookingModal({
         description: "Die Buchung wurde erfolgreich aktualisiert."
       });
     } else {
-      onSave(bookingData);
+      await onSave(bookingData);
       toast({
         title: "Buchung erstellt",
         description: "Die Buchung wurde erfolgreich erstellt."
       });
     }
+    setErrors({});
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (selectedEvent) {
-      onDelete(selectedEvent.resource.id);
+      await onDelete(selectedEvent.resource.id);
       toast({
         title: "Buchung gelöscht",
         description: "Die Buchung wurde erfolgreich gelöscht."
@@ -224,7 +265,9 @@ export function BookingModal({
                 type="datetime-local"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
+                className={errors.startDate ? "border-destructive" : ""}
               />
+              {errors.startDate && <p className="text-xs text-destructive mt-1">{errors.startDate}</p>}
             </div>
             <div>
               <Label htmlFor="endDate">Endzeit *</Label>
@@ -233,7 +276,9 @@ export function BookingModal({
                 type="datetime-local"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
+                className={errors.endDate ? "border-destructive" : ""}
               />
+              {errors.endDate && <p className="text-xs text-destructive mt-1">{errors.endDate}</p>}
             </div>
           </div>
 
@@ -248,7 +293,9 @@ export function BookingModal({
                   value={customer.name}
                   onChange={(e) => setCustomer({...customer, name: e.target.value})}
                   placeholder="Max Mustermann / Firma GmbH"
+                  className={errors.customerName ? "border-destructive" : ""}
                 />
+                {errors.customerName && <p className="text-xs text-destructive mt-1">{errors.customerName}</p>}
               </div>
               <div>
                 <Label htmlFor="customerCompany">Zusätzliche Firma</Label>
@@ -267,7 +314,9 @@ export function BookingModal({
                   value={customer.email}
                   onChange={(e) => setCustomer({...customer, email: e.target.value})}
                   placeholder="mail@example.de"
+                  className={errors.customerEmail ? "border-destructive" : ""}
                 />
+                {errors.customerEmail && <p className="text-xs text-destructive mt-1">{errors.customerEmail}</p>}
               </div>
               <div>
                 <Label htmlFor="customerPhone">Telefon *</Label>
@@ -276,7 +325,9 @@ export function BookingModal({
                   value={customer.phone}
                   onChange={(e) => setCustomer({...customer, phone: e.target.value})}
                   placeholder="+49 5921 123456"
+                  className={errors.customerPhone ? "border-destructive" : ""}
                 />
+                {errors.customerPhone && <p className="text-xs text-destructive mt-1">{errors.customerPhone}</p>}
               </div>
             </div>
           </div>
@@ -290,14 +341,19 @@ export function BookingModal({
               min="1"
               value={participants}
               onChange={(e) => setParticipants(parseInt(e.target.value) || 1)}
+              className={errors.participants ? "border-destructive" : ""}
             />
+            {errors.participants && <p className="text-xs text-destructive mt-1">{errors.participants}</p>}
           </div>
 
           {/* Boot-Auswahl */}
           <div>
             <Label htmlFor="boat">Boot auswählen *</Label>
-            <Select value={selectedBoatId} onValueChange={setSelectedBoatId}>
-              <SelectTrigger>
+            <Select value={selectedBoatId} onValueChange={(value) => {
+              setSelectedBoatId(value);
+              if (errors.boatId) setErrors({...errors, boatId: ""});
+            }}>
+              <SelectTrigger className={errors.boatId ? "border-destructive" : ""}>
                 <SelectValue placeholder="Boot auswählen" />
               </SelectTrigger>
               <SelectContent>
@@ -308,7 +364,8 @@ export function BookingModal({
                 ))}
               </SelectContent>
             </Select>
-            {participants > 0 && availableBoats.length === 0 && (
+            {errors.boatId && <p className="text-xs text-destructive mt-1">{errors.boatId}</p>}
+            {participants > 0 && availableBoats.length === 0 && !errors.boatId && (
               <p className="text-sm text-destructive mt-1">
                 Keine Boote für {participants} Personen verfügbar
               </p>
@@ -318,12 +375,15 @@ export function BookingModal({
           {/* Bootsführer-Auswahl */}
           <div>
             <Label htmlFor="captain">Bootsführer auswählen *</Label>
-            <Select 
-              value={selectedCaptainId} 
-              onValueChange={setSelectedCaptainId}
+            <Select
+              value={selectedCaptainId}
+              onValueChange={(value) => {
+                setSelectedCaptainId(value);
+                if (errors.captainId) setErrors({...errors, captainId: ""});
+              }}
               disabled={!selectedBoatId}
             >
-              <SelectTrigger>
+              <SelectTrigger className={errors.captainId ? "border-destructive" : ""}>
                 <SelectValue placeholder="Bootsführer auswählen" />
               </SelectTrigger>
               <SelectContent>
@@ -334,6 +394,7 @@ export function BookingModal({
                 ))}
               </SelectContent>
             </Select>
+            {errors.captainId && <p className="text-xs text-destructive mt-1">{errors.captainId}</p>}
           </div>
 
           {/* Verpflegung */}

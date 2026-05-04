@@ -1,73 +1,137 @@
-# Welcome to your Lovable project
+# Bootstour Manager
 
-## Project info
+Ein modernes Buchungssystem für Bootstouren der VVV Nordhorn. Verwalten Sie Boote, Bootsführer, Buchungen und Benutzer mit einer benutzerfreundlichen Web-Oberfläche.
 
-**URL**: https://lovable.dev/projects/393a2129-7b09-481c-ac68-2e0d9c898083
+## Features
 
-## How can I edit this code?
+- 📅 **Interaktiver Kalender** – Monatliche, wöchentliche und tägliche Ansichten
+- 🚤 **Bootverwaltung** – Erstellen, bearbeiten und verwalten Sie Ihre Flotte
+- 👥 **Bootsführer-Management** – Verwalten Sie qualifizierte Operatoren und deren Boot-Zuweisungen
+- 📦 **Buchungsverwaltung** – Ganz-/ Tagestouren mit Verfügbarkeitsprüfung
+- 🔐 **Rollenbasierte Zugriffskontrolle** – Admin, Staff, und Kundenzugriff
+- 👤 **Benutzerverwaltung** – Admin-Interface zur Benutzerverwaltung
+- 🎨 **Responsive Design** – Optimiert für Desktop und Mobile
 
-There are several ways of editing your application.
+## Tech Stack
 
-**Use Lovable**
+### Frontend
+- React 18 + TypeScript
+- Vite (Build-Tool)
+- TanStack Query (Datenabruf)
+- React Router (Navigation)
+- Tailwind CSS (Styling)
+- shadcn/ui (Komponenten)
+- React Big Calendar (Kalender)
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/393a2129-7b09-481c-ac68-2e0d9c898083) and start prompting.
+### Backend
+- FastAPI (Python)
+- PostgreSQL (Datenbank)
+- SQLAlchemy ORM
+- Pydantic (Datenvalidierung)
+- JWT-Authentifizierung
 
-Changes made via Lovable will be committed automatically to this repo.
+## Getting Started
 
-**Use your preferred IDE**
+### Voraussetzungen
+- Node.js 18+ (Frontend)
+- Python 3.9+ (Backend)
+- Docker & Docker Compose (PostgreSQL)
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Installation
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+**1. Repository klonen**
+```bash
+git clone <repository-url>
+cd bootstraum-manager
+```
 
-Follow these steps:
+**2. Backend einrichten**
+```bash
+cd bootstrap-manager-backend
+python -m venv venv
+source venv/bin/activate  # macOS/Linux
+# oder: venv\Scripts\activate  # Windows
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+pip install -r requirements.txt
+```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+**3. Datenbank starten**
+```bash
+docker compose up -d postgres
+```
 
-# Step 3: Install the necessary dependencies.
-npm i
+**4. Backend starten**
+```bash
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+Backend läuft auf: http://localhost:8000
+
+**5. Frontend einrichten & starten**
+```bash
+cd ../
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Frontend läuft auf: http://localhost:8080
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Admin-Benutzer erstellen
 
-**Use GitHub Codespaces**
+Ersten Admin-User via API registrieren:
+```bash
+curl -X POST http://localhost:8000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "admin@example.com",
+    "password": "securepassword",
+    "name": "Administrator",
+    "role": "admin"
+  }'
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Dann im Frontend anmelden unter: http://localhost:8080/login
 
-## What technologies are used for this project?
+## API Dokumentation
 
-This project is built with:
+Swagger UI: http://localhost:8000/docs
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Projekt-Struktur
 
-## How can I deploy this project?
+```
+bootstraum-manager/
+├── bootstrap-manager-backend/   # FastAPI Backend
+│   ├── app/
+│   │   ├── main.py             # App-Einstiegspunkt
+│   │   ├── models/             # SQLAlchemy ORM & Pydantic Schemas
+│   │   ├── api/routes/         # API-Endpoints
+│   │   ├── services/           # Business Logic
+│   │   └── repositories/       # Datenzugriff
+│   ├── .env                    # Umgebungsvariablen
+│   ├── requirements.txt        # Python-Dependencies
+│   └── docker-compose.yml      # PostgreSQL-Setup
+│
+├── src/                        # React Frontend
+│   ├── components/             # React-Komponenten
+│   │   ├── calendar/          # Kalender-Logik
+│   │   ├── layout/            # Layout-Komponenten
+│   │   └── ui/                # shadcn/ui Komponenten
+│   ├── pages/                 # Seiten (Boote, Bootsführer, Benutzer, etc.)
+│   ├── contexts/              # React Contexts (Auth)
+│   ├── lib/                   # Hilfsfunktionen (API-Client)
+│   ├── styles/                # CSS & Tailwind
+│   └── main.tsx               # App-Einstiegspunkt
+│
+├── index.html                 # HTML-Vorlage
+├── vite.config.ts             # Vite-Konfiguration
+├── tailwind.config.ts         # Tailwind-Konfiguration
+└── package.json               # Node-Dependencies
+```
 
-Simply open [Lovable](https://lovable.dev/projects/393a2129-7b09-481c-ac68-2e0d9c898083) and click on Share -> Publish.
+## Lizenz
 
-## Can I connect a custom domain to my Lovable project?
+Intern – VVV Nordhorn
 
-Yes, you can!
+## Support
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Bei Fragen oder Problemen wenden Sie sich an den Projektverantwortlichen.

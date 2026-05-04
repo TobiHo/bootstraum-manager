@@ -97,3 +97,25 @@ def update_user_role(
     db.commit()
     db.refresh(user)
     return UserResponse.from_orm(user)
+
+
+@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(get_admin_user),
+):
+    """
+    Delete a user (admin only)
+
+    Args:
+        user_id: User ID to delete
+        db: Database session
+        admin_user: Current admin user
+    """
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    db.delete(user)
+    db.commit()

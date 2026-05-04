@@ -1,17 +1,29 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Ship, Users, Edit, Trash2 } from "lucide-react";
 import { Boat } from "@/types/booking";
-import { boats as initialBoats } from "@/data/dataService";
 import { BoatModal } from "@/components/boats/BoatModal";
+import { api } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Boats() {
-  const [boats, setBoats] = useState<Boat[]>(initialBoats);
+  const { toast } = useToast();
+  const [boats, setBoats] = useState<Boat[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBoat, setSelectedBoat] = useState<Boat | null>(null);
+
+  useEffect(() => {
+    api.listBoats()
+      .then(setBoats)
+      .catch((error) => toast({
+        title: "Boote konnten nicht geladen werden",
+        description: error.message,
+        variant: "destructive",
+      }));
+  }, [toast]);
 
   const handleAddBoat = () => {
     setSelectedBoat(null);
@@ -23,26 +35,37 @@ export default function Boats() {
     setIsModalOpen(true);
   };
 
-  const handleSaveBoat = (boatData: Omit<Boat, 'id'>) => {
-    if (selectedBoat) {
-      // Update existing boat
-      setBoats(prev => prev.map(boat => 
-        boat.id === selectedBoat.id ? { ...boatData, id: selectedBoat.id } : boat
-      ));
-    } else {
-      // Add new boat
-      const newBoat: Boat = {
-        ...boatData,
-        id: Date.now().toString()
-      };
-      setBoats(prev => [...prev, newBoat]);
+  const handleSaveBoat = async (boatData: Omit<Boat, 'id'>) => {
+    try {
+      if (selectedBoat) {
+        const updatedBoat = await api.updateBoat(selectedBoat.id, boatData);
+        setBoats(prev => prev.map(boat => boat.id === selectedBoat.id ? updatedBoat : boat));
+      } else {
+        const newBoat = await api.createBoat(boatData);
+        setBoats(prev => [...prev, newBoat]);
+      }
+      setIsModalOpen(false);
+      setSelectedBoat(null);
+    } catch (error) {
+      toast({
+        title: "Boot konnte nicht gespeichert werden",
+        description: error instanceof Error ? error.message : "Unbekannter Fehler",
+        variant: "destructive",
+      });
     }
-    setIsModalOpen(false);
-    setSelectedBoat(null);
   };
 
-  const handleDeleteBoat = (boatId: string) => {
-    setBoats(prev => prev.filter(boat => boat.id !== boatId));
+  const handleDeleteBoat = async (boatId: string) => {
+    try {
+      await api.deleteBoat(boatId);
+      setBoats(prev => prev.filter(boat => boat.id !== boatId));
+    } catch (error) {
+      toast({
+        title: "Boot konnte nicht gelöscht werden",
+        description: error instanceof Error ? error.message : "Unbekannter Fehler",
+        variant: "destructive",
+      });
+    }
   };
 
   return (

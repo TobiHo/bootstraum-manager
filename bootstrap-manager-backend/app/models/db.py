@@ -103,6 +103,11 @@ class Captain(Base):
         UniqueConstraint("email", name="uq_captain_email"),
     )
 
+    @property
+    def available_boats(self) -> List[int]:
+        """Return assigned boat IDs for API responses."""
+        return [boat.id for boat in self.boats]
+
 
 class Booking(Base):
     """Booking model - represents boat tour bookings"""
