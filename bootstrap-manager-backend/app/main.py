@@ -23,6 +23,8 @@ app.add_middleware(
         "http://localhost:5173",
         "http://localhost:3000",
         "http://localhost:8080",
+        "https://bootstraum-manager.vercel.app",
+        "*",  # Allow all origins for public API
     ],
     allow_credentials=True,
     allow_methods=["*"],
