@@ -97,6 +97,7 @@ class BookingService:
             customer_name=booking_in.customer_name,
             customer_email=booking_in.customer_email,
             customer_phone=booking_in.customer_phone,
+            tour_type=booking_in.tour_type,
             notes=booking_in.notes,
             status=BookingStatus.PENDING,
         )
@@ -261,9 +262,30 @@ class BookingService:
         if booking_update.status:
             booking.status = booking_update.status
 
+        if booking_update.tour_type:
+            booking.tour_type = booking_update.tour_type
+
         if booking_update.notes is not None:
             booking.notes = booking_update.notes
 
+        updated_booking = self.repo.update(booking)
+        return BookingResponse.from_orm(updated_booking)
+
+    def cancel_booking(self, booking_id: int) -> Optional[BookingResponse]:
+        """
+        Cancel a booking (sets status to CANCELLED)
+
+        Args:
+            booking_id: Booking ID to cancel
+
+        Returns:
+            BookingResponse with cancelled booking data, None if not found
+        """
+        booking = self.repo.get(booking_id)
+        if not booking:
+            return None
+
+        booking.status = BookingStatus.CANCELLED
         updated_booking = self.repo.update(booking)
         return BookingResponse.from_orm(updated_booking)
 

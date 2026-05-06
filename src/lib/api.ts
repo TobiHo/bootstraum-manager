@@ -201,6 +201,11 @@ export const api = {
       body: JSON.stringify(bookingPayload(booking)),
     }));
   },
+  async cancelBooking(bookingId: string) {
+    return toBooking(await request<ApiBooking>(`/api/bookings/${bookingId}/cancel`, {
+      method: "POST",
+    }));
+  },
   async deleteBooking(id: string) {
     await request<void>(`/api/bookings/${id}`, { method: "DELETE" });
   },

@@ -22,8 +22,18 @@ import {
 import { Card } from "@/components/ui/card";
 import { Boat, CalendarEvent, BookingData, Captain, Customer } from "@/types/booking";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2 } from "lucide-react";
+import { Trash2, AlertCircle } from "lucide-react";
 import { TOUR_TYPES, calculatePrice, getDurationHours, formatPrice } from "@/lib/pricing";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -66,6 +76,7 @@ export function BookingModal({
   const [endDate, setEndDate] = useState<string>("");
   const [tourType, setTourType] = useState<string>("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   const isEditMode = !!selectedEvent;
 
@@ -249,6 +260,28 @@ export function BookingModal({
         title: "Buchung gelöscht",
         description: "Die Buchung wurde erfolgreich gelöscht."
       });
+    }
+  };
+
+  const handleCancel = async () => {
+    if (selectedEvent) {
+      try {
+        await (window as any).__api.cancelBooking(selectedEvent.resource.id);
+        setShowCancelConfirm(false);
+        toast({
+          title: "Buchung storniert",
+          description: "Die Buchung wurde storniert und Benachrichtigungen wurden versendet."
+        });
+        handleClose();
+        window.location.reload();
+      } catch (error) {
+        setShowCancelConfirm(false);
+        toast({
+          title: "Fehler",
+          description: error instanceof Error ? error.message : "Buchung konnte nicht storniert werden",
+          variant: "destructive"
+        });
+      }
     }
   };
 
@@ -480,16 +513,46 @@ export function BookingModal({
 
           {/* Buttons */}
           <div className="flex justify-between pt-4">
-            <div>
+            <div className="flex gap-2">
               {isEditMode && (
-                <Button 
-                  variant="destructive" 
-                  onClick={handleDelete}
-                  className="flex items-center gap-2"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Löschen
-                </Button>
+                <>
+                  <AlertDialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="flex items-center gap-2 text-orange-600 border-orange-200"
+                      >
+                        <AlertCircle className="h-4 w-4" />
+                        Stornieren
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Buchung stornieren?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Diese Buchung wird storniert und der Bootsführer sowie der Kunde werden per E-Mail und WhatsApp benachrichtigt.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <div className="flex gap-2">
+                        <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleCancel}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Ja, stornieren
+                        </AlertDialogAction>
+                      </div>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                  <Button
+                    variant="destructive"
+                    onClick={handleDelete}
+                    className="flex items-center gap-2"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Löschen
+                  </Button>
+                </>
               )}
             </div>
             <div className="flex gap-2">

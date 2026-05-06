@@ -12,6 +12,7 @@ from app.models.schemas import (
     AvailabilityResponse,
 )
 from app.services.booking_service import BookingService
+from app.services.notification_service import NotificationService
 from app.middleware.auth import get_current_user, get_staff_user
 from app.models.db import User
 from app.domain.booking import BookingStatus
@@ -138,6 +139,36 @@ def delete_booking(
     """
     booking_service = BookingService(db)
     booking_service.delete_booking(booking_id)
+
+
+@router.post("/{booking_id}/cancel", response_model=BookingResponse)
+def cancel_booking(
+    booking_id: int,
+    db: Session = Depends(get_db),
+    staff_user: User = Depends(get_staff_user),
+):
+    """
+    Cancel a booking and notify captain & customer via email/WhatsApp (staff+)
+
+    Args:
+        booking_id: Booking ID to cancel
+        db: Database session
+        staff_user: Current staff/admin user
+
+    Returns:
+        BookingResponse with cancelled booking data
+    """
+    booking_service = BookingService(db)
+    booking = booking_service.cancel_booking(booking_id)
+
+    if not booking:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found")
+
+    # Send notifications
+    notification_service = NotificationService()
+    notification_service.send_cancellation_notification(booking)
+
+    return booking
 
 
 @router.post("/check-availability", response_model=AvailabilityResponse)
