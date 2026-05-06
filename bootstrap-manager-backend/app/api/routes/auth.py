@@ -41,7 +41,7 @@ def register(
     )
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.get("/login", response_model=TokenResponse)
 def login(
     email: str,
     password: str,
