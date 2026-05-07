@@ -22,8 +22,6 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
-console.log("DEBUG AuthContext: VITE_API_BASE_URL =", import.meta.env.VITE_API_BASE_URL);
-console.log("DEBUG AuthContext: API_BASE_URL =", API_BASE_URL);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -56,9 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [fetchUserProfile]);
 
   const login = async (email: string, password: string): Promise<void> => {
-    const loginUrl = `${API_BASE_URL}/api/auth/login`;
-    console.log("DEBUG: About to fetch from URL:", loginUrl);
-    const response = await fetch(loginUrl, {
+    const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
