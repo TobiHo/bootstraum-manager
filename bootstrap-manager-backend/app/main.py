@@ -5,9 +5,10 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from app.api.routes import auth, boats, captains, bookings, users
 from app.db.database import Base, engine
+from app.init_db import init_db
 
-# Create tables
-Base.metadata.create_all(bind=engine)
+# Initialize database with default users
+init_db()
 
 # Create FastAPI app
 app = FastAPI(
