@@ -56,7 +56,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [fetchUserProfile]);
 
   const login = async (email: string, password: string): Promise<void> => {
-    const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+    const loginUrl = `${API_BASE_URL}/api/auth/login`;
+    console.log("DEBUG: About to fetch from URL:", loginUrl);
+    const response = await fetch(loginUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
