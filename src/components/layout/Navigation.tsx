@@ -14,16 +14,23 @@ import {
   Settings,
   BarChart3
 } from "lucide-react";
+import { Anchor, CalendarClock, CalendarOff } from "lucide-react";
 
 const navigation = [
-  { name: "Kalender", href: "/", icon: Calendar },
-  { name: "Boote", href: "/boats", icon: Ship },
-  { name: "Bootsführer", href: "/captains", icon: Users },
+  { name: "Kalender", href: "/admin", icon: Calendar },
+  { name: "Boote", href: "/admin/boats", icon: Ship },
+  { name: "Bootsführer", href: "/admin/captains", icon: Users },
+  { name: "Tour-Typen", href: "/admin/tour-types", icon: Anchor },
+  { name: "Öffentl. Termine", href: "/admin/public-tours", icon: CalendarClock },
 ];
 
 const adminNavigation = [
-  { name: "Berichte", href: "/reports", icon: BarChart3 },
-  { name: "Benutzer", href: "/users", icon: Settings },
+  { name: "Berichte", href: "/admin/reports", icon: BarChart3 },
+  { name: "Benutzer", href: "/admin/users", icon: Settings },
+];
+
+const captainNavigation = [
+  { name: "Meine Abwesenheiten", href: "/captain/abwesenheiten", icon: CalendarOff },
 ];
 
 export function Navigation() {
@@ -42,7 +49,7 @@ export function Navigation() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <Link to="/" className="flex items-center space-x-2">
+            <Link to="/admin" className="flex items-center space-x-2">
               <Ship className="h-8 w-8 text-primary" />
               <span className="text-xl font-bold text-foreground">
                 Bootstour Manager
@@ -52,7 +59,7 @@ export function Navigation() {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-1">
-            {navigation.map((item) => {
+            {(user?.role === "admin" || user?.role === "staff" ? navigation : []).map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.href;
 
@@ -87,6 +94,18 @@ export function Navigation() {
                   >
                     <Icon className="h-4 w-4" />
                     <span>{item.name}</span>
+                  </Button>
+                </Link>
+              );
+            })}
+
+            {(user?.role === "captain" || user?.role === "admin") && captainNavigation.map((item) => {
+              const Icon = item.icon;
+              const isActive = location.pathname === item.href;
+              return (
+                <Link key={item.name} to={item.href}>
+                  <Button variant={isActive ? "default" : "ghost"} className={cn("flex items-center space-x-2", isActive && "bg-primary text-primary-foreground")}>
+                    <Icon className="h-4 w-4" /><span>{item.name}</span>
                   </Button>
                 </Link>
               );

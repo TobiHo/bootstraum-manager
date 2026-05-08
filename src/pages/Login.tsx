@@ -25,7 +25,7 @@ const Login = () => {
 
     try {
       await login(email, password);
-      const from = (location.state as any)?.from || "/";
+      const from = (location.state as any)?.from || "/admin";
       navigate(from, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");

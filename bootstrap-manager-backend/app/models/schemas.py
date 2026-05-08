@@ -185,6 +185,8 @@ class BookingCreate(BaseModel):
     customer_phone: str = Field(..., min_length=1, max_length=20)
     tour_type: Optional[str] = Field(None, max_length=50)
     notes: Optional[str] = Field(None, max_length=1000)
+    catering: bool = False
+    booking_kind: str = Field("charter", pattern="^(charter|public)$")
 
 
 class BookingUpdate(BaseModel):
@@ -219,6 +221,11 @@ class BookingResponse(BaseModel):
     tour_type: Optional[str]
     status: BookingStatus
     notes: Optional[str]
+    catering: bool = False
+    booking_kind: str = "charter"
+    total_price: float = 0.0
+    payment_status: str = "unpaid"
+    public_tour_id: Optional[int] = None
     created_at: datetime
     updated_at: datetime
 
@@ -244,3 +251,118 @@ class AvailabilityResponse(BaseModel):
     end_date: datetime
     reason: Optional[str] = None
     available_captains: List[int] = []
+
+
+# ============================================================================
+# TourType / PublicTour / Absence Schemas
+# ============================================================================
+
+class TourTypeCreate(BaseModel):
+    slug: str = Field(..., min_length=1, max_length=120)
+    name: str = Field(..., min_length=1, max_length=255)
+    description: Optional[str] = Field(None, max_length=2000)
+    duration_minutes: int = Field(..., gt=0)
+    price_per_ticket: float = Field(..., ge=0)
+    min_participants: int = Field(1, ge=1)
+    max_participants: int = Field(50, ge=1)
+    image_url: Optional[str] = Field(None, max_length=500)
+    active: bool = True
+
+
+class TourTypeUpdate(BaseModel):
+    slug: Optional[str] = Field(None, min_length=1, max_length=120)
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    description: Optional[str] = Field(None, max_length=2000)
+    duration_minutes: Optional[int] = Field(None, gt=0)
+    price_per_ticket: Optional[float] = Field(None, ge=0)
+    min_participants: Optional[int] = Field(None, ge=1)
+    max_participants: Optional[int] = Field(None, ge=1)
+    image_url: Optional[str] = Field(None, max_length=500)
+    active: Optional[bool] = None
+
+
+class TourTypeResponse(BaseModel):
+    id: int
+    slug: str
+    name: str
+    description: Optional[str]
+    duration_minutes: int
+    price_per_ticket: float
+    min_participants: int
+    max_participants: int
+    image_url: Optional[str]
+    active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class PublicTourCreate(BaseModel):
+    tour_type_id: int
+    boat_id: int
+    captain_id: Optional[int] = None  # auto-assigned if not provided
+    start_date: datetime
+    end_date: datetime
+    seats_total: int = Field(..., gt=0)
+
+
+class PublicTourResponse(BaseModel):
+    id: int
+    tour_type_id: int
+    boat_id: int
+    captain_id: Optional[int]
+    start_date: datetime
+    end_date: datetime
+    seats_total: int
+    seats_booked: int
+    status: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class TicketPurchase(BaseModel):
+    public_tour_id: int
+    quantity: int = Field(..., gt=0)
+    customer_name: str = Field(..., min_length=1, max_length=255)
+    customer_email: EmailStr
+    customer_phone: str = Field(..., min_length=1, max_length=20)
+    catering: bool = False
+    notes: Optional[str] = Field(None, max_length=1000)
+
+
+class CharterRequest(BaseModel):
+    """Public charter request (no auth required)"""
+    boat_id: int
+    start_date: datetime
+    end_date: datetime
+    participants: int = Field(..., gt=0)
+    customer_name: str = Field(..., min_length=1, max_length=255)
+    customer_email: EmailStr
+    customer_phone: str = Field(..., min_length=1, max_length=20)
+    catering: bool = False
+    notes: Optional[str] = Field(None, max_length=1000)
+    tour_type: Optional[str] = Field(None, max_length=50)
+
+
+class CaptainAbsenceCreate(BaseModel):
+    start_date: datetime
+    end_date: datetime
+    reason: str = Field("vacation", pattern="^(vacation|sick|permanent|other)$")
+    notes: Optional[str] = Field(None, max_length=500)
+
+
+class CaptainAbsenceResponse(BaseModel):
+    id: int
+    captain_id: int
+    start_date: datetime
+    end_date: datetime
+    reason: str
+    notes: Optional[str]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

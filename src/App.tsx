@@ -6,6 +6,14 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Index from "./pages/Index";
+import PublicHome from "./pages/public/PublicHome";
+import PublicTours from "./pages/public/PublicTours";
+import PublicTourDetail from "./pages/public/PublicTourDetail";
+import PublicCharter from "./pages/public/PublicCharter";
+import PublicContact from "./pages/public/PublicContact";
+import AdminTourTypes from "./pages/admin/TourTypes";
+import AdminPublicTours from "./pages/admin/PublicTours";
+import MyAbsences from "./pages/captain/MyAbsences";
 import Boats from "./pages/Boats";
 import Captains from "./pages/Captains";
 import Users from "./pages/Users";
@@ -23,12 +31,23 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
+            {/* Public webshop */}
+            <Route path="/" element={<PublicHome />} />
+            <Route path="/touren" element={<PublicTours />} />
+            <Route path="/touren/:slug" element={<PublicTourDetail />} />
+            <Route path="/charter" element={<PublicCharter />} />
+            <Route path="/kontakt" element={<PublicContact />} />
+
             <Route path="/login" element={<Login />} />
-            <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-            <Route path="/boats" element={<ProtectedRoute><Boats /></ProtectedRoute>} />
-            <Route path="/captains" element={<ProtectedRoute><Captains /></ProtectedRoute>} />
-            <Route path="/users" element={<ProtectedRoute requireAdmin><Users /></ProtectedRoute>} />
-            <Route path="/reports" element={<ProtectedRoute requireAdmin><Reports /></ProtectedRoute>} />
+            {/* Internal admin / staff / captain area */}
+            <Route path="/admin" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+            <Route path="/admin/boats" element={<ProtectedRoute><Boats /></ProtectedRoute>} />
+            <Route path="/admin/captains" element={<ProtectedRoute><Captains /></ProtectedRoute>} />
+            <Route path="/admin/tour-types" element={<ProtectedRoute><AdminTourTypes /></ProtectedRoute>} />
+            <Route path="/admin/public-tours" element={<ProtectedRoute><AdminPublicTours /></ProtectedRoute>} />
+            <Route path="/admin/users" element={<ProtectedRoute requireAdmin><Users /></ProtectedRoute>} />
+            <Route path="/admin/reports" element={<ProtectedRoute requireAdmin><Reports /></ProtectedRoute>} />
+            <Route path="/captain/abwesenheiten" element={<ProtectedRoute><MyAbsences /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
