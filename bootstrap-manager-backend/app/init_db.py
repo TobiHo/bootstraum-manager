@@ -1,7 +1,7 @@
 """Initialize database with default users, boats, and captains"""
 
 from app.db.database import SessionLocal, Base, engine
-from app.models.db import User, Boat, Captain
+from app.models.db import User, Boat, Captain, TourType
 from app.services.user_service import UserService
 from app.models.schemas import UserCreate
 
@@ -106,6 +106,46 @@ def init_db():
 
         db.commit()
         print("✓ Demo data initialization complete")
+
+        # Seed tour types for the public webshop
+        tour_types_seed = [
+            {
+                "slug": "vechte-rundfahrt",
+                "name": "Vechte-Rundfahrt",
+                "description": "Entspannte 90-minütige Rundfahrt durch das Herz von Nordhorn.",
+                "duration_minutes": 90,
+                "price_per_ticket": 14.50,
+                "min_participants": 1,
+                "max_participants": 25,
+                "image_url": "/images/vechte-rundfahrt.jpg",
+            },
+            {
+                "slug": "abend-tour",
+                "name": "Abendliche Lichterfahrt",
+                "description": "Genießen Sie Nordhorn am Abend mit Lichtern entlang der Vechte.",
+                "duration_minutes": 120,
+                "price_per_ticket": 19.90,
+                "min_participants": 1,
+                "max_participants": 25,
+                "image_url": "/images/abend-tour.jpg",
+            },
+            {
+                "slug": "kinder-piraten",
+                "name": "Kinder-Piratenfahrt",
+                "description": "Eine spannende Bootsfahrt für Familien mit Piraten-Programm.",
+                "duration_minutes": 60,
+                "price_per_ticket": 9.50,
+                "min_participants": 1,
+                "max_participants": 25,
+                "image_url": "/images/kinder-piraten.jpg",
+            },
+        ]
+        for data in tour_types_seed:
+            existing = db.query(TourType).filter(TourType.slug == data["slug"]).first()
+            if not existing:
+                db.add(TourType(**data))
+        db.commit()
+        print("✓ Tour types seeded")
     except Exception as e:
         db.rollback()
         print(f"✗ Error during database initialization: {e}")

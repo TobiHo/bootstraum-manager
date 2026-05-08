@@ -100,6 +100,8 @@ class BookingService:
             tour_type=booking_in.tour_type,
             notes=booking_in.notes,
             status=BookingStatus.PENDING,
+            catering=getattr(booking_in, "catering", False),
+            booking_kind=getattr(booking_in, "booking_kind", "charter"),
         )
 
         created_booking = self.repo.create(booking)
