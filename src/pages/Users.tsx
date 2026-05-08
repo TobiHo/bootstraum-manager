@@ -42,10 +42,10 @@ const Users = () => {
     email: "",
     password: "",
     name: "",
-    role: "staff" as "admin" | "staff" | "customer",
+    role: "staff" as "admin" | "staff" | "captain" | "customer",
   });
 
-  const [selectedRole, setSelectedRole] = useState<"admin" | "staff" | "customer">("staff");
+  const [selectedRole, setSelectedRole] = useState<"admin" | "staff" | "captain" | "customer">("staff");
 
   useEffect(() => {
     loadUsers();
