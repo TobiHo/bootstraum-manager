@@ -99,3 +99,21 @@ def get_staff_user(current_user: User = Depends(get_current_user)) -> User:
             detail="Staff access required",
         )
     return current_user
+
+
+def get_captain_user(current_user: User = Depends(get_current_user)) -> User:
+    """Allow only captain (or admin) to proceed."""
+    if current_user.role not in [UserRole.CAPTAIN, UserRole.ADMIN]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Captain access required",
+        )
+    return current_user
+
+
+def get_optional_user(
+    db: Session = Depends(get_db),
+) -> Optional[User]:
+    """For public endpoints that may optionally use auth context. Always returns None here;
+    public endpoints use unauthenticated path."""
+    return None
