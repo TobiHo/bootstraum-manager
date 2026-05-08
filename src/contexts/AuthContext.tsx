@@ -4,7 +4,7 @@ export interface User {
   id: number;
   email: string;
   name: string;
-  role: "admin" | "staff" | "customer";
+  role: "admin" | "staff" | "captain" | "customer";
   created_at?: string;
   updated_at?: string;
 }
@@ -14,6 +14,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isAdmin: boolean;
   isStaff: boolean;
+  isCaptain: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
@@ -86,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated: user !== null,
     isAdmin: user?.role === "admin",
     isStaff: user?.role === "staff" || user?.role === "admin",
+    isCaptain: user?.role === "captain",
     isLoading,
     login,
     logout,

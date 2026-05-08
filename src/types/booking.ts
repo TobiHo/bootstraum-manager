@@ -45,3 +45,37 @@ export interface CalendarEvent {
   end: Date;
   resource: BookingData;
 }
+
+export interface TourType {
+  id: string;
+  slug: string;
+  name: string;
+  description?: string;
+  durationMinutes: number;
+  pricePerTicket: number;
+  minParticipants: number;
+  maxParticipants: number;
+  imageUrl?: string;
+  active: boolean;
+}
+
+export interface PublicTour {
+  id: string;
+  tourTypeId: string;
+  boatId: string;
+  captainId?: string;
+  startDate: Date;
+  endDate: Date;
+  seatsTotal: number;
+  seatsBooked: number;
+  status: "scheduled" | "cancelled" | "completed";
+}
+
+export interface CaptainAbsence {
+  id: string;
+  captainId: string;
+  startDate: Date;
+  endDate: Date;
+  reason: "vacation" | "sick" | "permanent" | "other";
+  notes?: string;
+}

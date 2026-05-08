@@ -1,4 +1,4 @@
-import { Boat, BookingData, Captain } from "@/types/booking";
+import { Boat, BookingData, Captain, TourType, PublicTour, CaptainAbsence } from "@/types/booking";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
@@ -6,7 +6,7 @@ export interface User {
   id: number;
   email: string;
   name: string;
-  role: "admin" | "staff" | "customer";
+  role: "admin" | "staff" | "captain" | "customer";
   created_at: string;
   updated_at: string;
 }
@@ -104,7 +104,7 @@ const toBooking = (booking: ApiBooking): BookingData => ({
   participants: booking.participants,
   boatId: String(booking.boat_id),
   captainId: booking.captain_id ? String(booking.captain_id) : "",
-  catering: false,
+  catering: (booking as any).catering ?? false,
   notes: booking.notes ?? "",
   tourType: booking.tour_type ?? undefined,
   status: booking.status,
@@ -209,10 +209,112 @@ export const api = {
   async deleteBooking(id: string) {
     await request<void>(`/api/bookings/${id}`, { method: "DELETE" });
   },
+  // ============ Tour Types ============
+  async listTourTypes(onlyActive = false) {
+    const data = await request<any[]>(`/api/tour-types${onlyActive ? "?only_active=true" : ""}`);
+    return data.map(toTourType);
+  },
+  async getTourTypeBySlug(slug: string) {
+    return toTourType(await request<any>(`/api/tour-types/by-slug/${slug}`));
+  },
+  async createTourType(t: Omit<TourType, "id">) {
+    return toTourType(await request<any>("/api/tour-types", {
+      method: "POST",
+      body: JSON.stringify(tourTypePayload(t)),
+    }));
+  },
+  async updateTourType(id: string, t: Omit<TourType, "id">) {
+    return toTourType(await request<any>(`/api/tour-types/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(tourTypePayload(t)),
+    }));
+  },
+  async deleteTourType(id: string) {
+    await request<void>(`/api/tour-types/${id}`, { method: "DELETE" });
+  },
+  // ============ Public Tours (slots) ============
+  async listPublicTours(params: { from?: Date; to?: Date; tourTypeId?: string; onlyAvailable?: boolean } = {}) {
+    const qs = new URLSearchParams();
+    if (params.from) qs.set("from_date", params.from.toISOString());
+    if (params.to) qs.set("to_date", params.to.toISOString());
+    if (params.tourTypeId) qs.set("tour_type_id", params.tourTypeId);
+    if (params.onlyAvailable) qs.set("only_available", "true");
+    const data = await request<any[]>(`/api/public-tours${qs.toString() ? `?${qs}` : ""}`);
+    return data.map(toPublicTour);
+  },
+  async createPublicTour(p: { tourTypeId: string; boatId: string; captainId?: string; startDate: Date; endDate: Date; seatsTotal: number }) {
+    return toPublicTour(await request<any>("/api/public-tours", {
+      method: "POST",
+      body: JSON.stringify({
+        tour_type_id: Number(p.tourTypeId),
+        boat_id: Number(p.boatId),
+        captain_id: p.captainId ? Number(p.captainId) : null,
+        start_date: p.startDate.toISOString(),
+        end_date: p.endDate.toISOString(),
+        seats_total: p.seatsTotal,
+      }),
+    }));
+  },
+  async cancelPublicTour(id: string) {
+    await request<void>(`/api/public-tours/${id}`, { method: "DELETE" });
+  },
+  async buyTickets(publicTourId: string, payload: { quantity: number; customer: { name: string; email: string; phone: string }; catering: boolean; notes?: string }) {
+    return toBooking(await request<ApiBooking>(`/api/public-tours/${publicTourId}/tickets`, {
+      method: "POST",
+      body: JSON.stringify({
+        public_tour_id: Number(publicTourId),
+        quantity: payload.quantity,
+        customer_name: payload.customer.name,
+        customer_email: payload.customer.email,
+        customer_phone: payload.customer.phone,
+        catering: payload.catering,
+        notes: payload.notes ?? null,
+      }),
+    }));
+  },
+  // ============ Public Charter ============
+  async createPublicCharter(payload: { boatId: string; startDate: Date; endDate: Date; participants: number; customer: { name: string; email: string; phone: string }; catering: boolean; notes?: string; tourType?: string }) {
+    return toBooking(await request<ApiBooking>("/api/public/charter", {
+      method: "POST",
+      body: JSON.stringify({
+        boat_id: Number(payload.boatId),
+        start_date: payload.startDate.toISOString(),
+        end_date: payload.endDate.toISOString(),
+        participants: payload.participants,
+        customer_name: payload.customer.name,
+        customer_email: payload.customer.email,
+        customer_phone: payload.customer.phone,
+        catering: payload.catering,
+        notes: payload.notes ?? null,
+        tour_type: payload.tourType ?? null,
+      }),
+    }));
+  },
+  // ============ Captain Absences ============
+  async listMyAbsences() {
+    return (await request<any[]>("/api/captains/me/absences")).map(toAbsence);
+  },
+  async createMyAbsence(p: { startDate: Date; endDate: Date; reason: CaptainAbsence["reason"]; notes?: string }) {
+    return toAbsence(await request<any>("/api/captains/me/absences", {
+      method: "POST",
+      body: JSON.stringify({
+        start_date: p.startDate.toISOString(),
+        end_date: p.endDate.toISOString(),
+        reason: p.reason,
+        notes: p.notes ?? null,
+      }),
+    }));
+  },
+  async deleteMyAbsence(id: string) {
+    await request<void>(`/api/captains/me/absences/${id}`, { method: "DELETE" });
+  },
+  async listCaptainAbsences(captainId: string) {
+    return (await request<any[]>(`/api/captains/${captainId}/absences`)).map(toAbsence);
+  },
   async listUsers() {
     return await request<User[]>("/api/users");
   },
-  async updateUserRole(id: number, role: "admin" | "staff" | "customer") {
+  async updateUserRole(id: number, role: "admin" | "staff" | "captain" | "customer") {
     return await request<User>(`/api/users/${id}/role`, {
       method: "PUT",
       body: JSON.stringify({ role }),
@@ -221,10 +323,56 @@ export const api = {
   async deleteUser(id: number) {
     await request<void>(`/api/users/${id}`, { method: "DELETE" });
   },
-  async registerUser(email: string, password: string, name: string, role: "admin" | "staff" | "customer" = "customer") {
+  async registerUser(email: string, password: string, name: string, role: "admin" | "staff" | "captain" | "customer" = "customer") {
     return await request<{ access_token: string; refresh_token: string; token_type: string }>("/api/auth/register", {
       method: "POST",
       body: JSON.stringify({ email, password, name, role }),
     });
   },
 };
+
+const toTourType = (t: any): TourType => ({
+  id: String(t.id),
+  slug: t.slug,
+  name: t.name,
+  description: t.description ?? "",
+  durationMinutes: t.duration_minutes,
+  pricePerTicket: t.price_per_ticket,
+  minParticipants: t.min_participants,
+  maxParticipants: t.max_participants,
+  imageUrl: t.image_url ?? undefined,
+  active: t.active,
+});
+
+const tourTypePayload = (t: Omit<TourType, "id">) => ({
+  slug: t.slug,
+  name: t.name,
+  description: t.description,
+  duration_minutes: t.durationMinutes,
+  price_per_ticket: t.pricePerTicket,
+  min_participants: t.minParticipants,
+  max_participants: t.maxParticipants,
+  image_url: t.imageUrl,
+  active: t.active,
+});
+
+const toPublicTour = (p: any): PublicTour => ({
+  id: String(p.id),
+  tourTypeId: String(p.tour_type_id),
+  boatId: String(p.boat_id),
+  captainId: p.captain_id ? String(p.captain_id) : undefined,
+  startDate: new Date(p.start_date),
+  endDate: new Date(p.end_date),
+  seatsTotal: p.seats_total,
+  seatsBooked: p.seats_booked,
+  status: p.status,
+});
+
+const toAbsence = (a: any): CaptainAbsence => ({
+  id: String(a.id),
+  captainId: String(a.captain_id),
+  startDate: new Date(a.start_date),
+  endDate: new Date(a.end_date),
+  reason: a.reason,
+  notes: a.notes ?? undefined,
+});
