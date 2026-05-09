@@ -25,8 +25,8 @@ export default function PublicCharter() {
   const [notes, setNotes] = useState("");
 
   const create = useMutation({
-    mutationFn: () =>
-      api.createPublicCharter({
+    mutationFn: async () => {
+      const booking = await api.createPublicCharter({
         boatId,
         startDate: new Date(start),
         endDate: new Date(end),
@@ -34,9 +34,17 @@ export default function PublicCharter() {
         customer: { name, email, phone },
         catering,
         notes,
-      }),
+      });
+      try {
+        const { checkout_url } = await api.createPaddleCheckout(booking.id);
+        window.location.href = checkout_url;
+      } catch {
+        // Online payment optional – booking stays pending for manual confirmation
+      }
+      return booking;
+    },
     onSuccess: () => {
-      toast({ title: "Anfrage übermittelt", description: "Wir melden uns kurzfristig bei Ihnen." });
+      toast({ title: "Anfrage übermittelt", description: "Sie werden ggf. zur Bezahlung weitergeleitet." });
       setBoatId(""); setStart(""); setEnd(""); setParticipants(2);
       setName(""); setEmail(""); setPhone(""); setNotes(""); setCatering(false);
     },
