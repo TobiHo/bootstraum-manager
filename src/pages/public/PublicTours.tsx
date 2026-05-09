@@ -4,6 +4,13 @@ import { PublicLayout } from "@/components/public/PublicLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { api } from "@/lib/api";
 import { Clock, Users, Anchor } from "lucide-react";
+import publicTourImg from "@/assets/public-tour.jpg";
+import charterImg from "@/assets/charter.jpg";
+import fleetImg from "@/assets/fleet.jpg";
+import heroImg from "@/assets/hero-boat-tour.jpg";
+import captainImg from "@/assets/captain.jpg";
+
+const tourImages = [publicTourImg, heroImg, charterImg, fleetImg, captainImg];
 
 export default function PublicTours() {
   const { data: tourTypes = [], isLoading } = useQuery({
@@ -21,12 +28,17 @@ export default function PublicTours() {
           <p>Lädt...</p>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {tourTypes.map((t) => (
+            {tourTypes.map((t, i) => (
               <Link key={t.id} to={`/touren/${t.slug}`}>
                 <Card className="overflow-hidden hover:shadow-lg transition h-full">
-                  <div className="h-44 bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
-                    <Anchor className="h-12 w-12 text-primary" />
-                  </div>
+                  <img
+                    src={tourImages[i % tourImages.length]}
+                    alt={t.name}
+                    loading="lazy"
+                    width={1024}
+                    height={768}
+                    className="h-44 w-full object-cover"
+                  />
                   <CardContent className="p-5">
                     <h3 className="font-semibold text-lg mb-2">{t.name}</h3>
                     <p className="text-sm text-muted-foreground mb-4">{t.description}</p>
