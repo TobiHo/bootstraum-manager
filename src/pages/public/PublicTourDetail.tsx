@@ -13,6 +13,7 @@ import { Clock, Users, Calendar as CalIcon, Ticket } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+import publicTourImg from "@/assets/public-tour.jpg";
 
 export default function PublicTourDetail() {
   const { slug = "" } = useParams();
@@ -76,6 +77,10 @@ export default function PublicTourDetail() {
 
   return (
     <PublicLayout>
+      <div className="relative h-64 md:h-96 overflow-hidden">
+        <img src={publicTourImg} alt={tt.name} width={1024} height={768} className="absolute inset-0 h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
+      </div>
       <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <Link to="/touren" className="text-sm text-primary hover:underline">← Zurück zu allen Touren</Link>
         <h1 className="text-4xl font-bold mt-4 mb-2">{tt.name}</h1>
