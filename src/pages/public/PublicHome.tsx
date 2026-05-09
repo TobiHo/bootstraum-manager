@@ -5,6 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { api } from "@/lib/api";
 import { Clock, Users, Ticket, Anchor } from "lucide-react";
+import heroImg from "@/assets/hero-boat-tour.jpg";
+import captainImg from "@/assets/captain.jpg";
+import fleetImg from "@/assets/fleet.jpg";
+import publicTourImg from "@/assets/public-tour.jpg";
+import charterImg from "@/assets/charter.jpg";
+
+const tourImages = [publicTourImg, charterImg, fleetImg, heroImg, captainImg];
 
 export default function PublicHome() {
   const { data: tourTypes = [] } = useQuery({
@@ -16,10 +23,18 @@ export default function PublicHome() {
     <PublicLayout>
       {/* Hero */}
       <section
-        className="relative bg-gradient-to-br from-primary to-accent text-primary-foreground"
+        className="relative text-primary-foreground overflow-hidden"
       >
+        <img
+          src={heroImg}
+          alt="Bootstour auf der Vechte in Nordhorn"
+          width={1920}
+          height={1080}
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/80 to-accent/70" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32">
-          <div className="max-w-2xl">
+          <div className="relative max-w-2xl">
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
               Nordhorn vom Wasser entdecken
             </h1>
@@ -55,12 +70,17 @@ export default function PublicHome() {
           </Link>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {tourTypes.slice(0, 6).map((t) => (
+          {tourTypes.slice(0, 6).map((t, i) => (
             <Link key={t.id} to={`/touren/${t.slug}`}>
               <Card className="overflow-hidden hover:shadow-lg transition h-full">
-                <div className="h-44 bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
-                  <Anchor className="h-12 w-12 text-primary" />
-                </div>
+                <img
+                  src={tourImages[i % tourImages.length]}
+                  alt={t.name}
+                  loading="lazy"
+                  width={1024}
+                  height={768}
+                  className="h-44 w-full object-cover"
+                />
                 <CardContent className="p-5">
                   <h3 className="font-semibold text-lg mb-2">{t.name}</h3>
                   <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{t.description}</p>
@@ -87,14 +107,17 @@ export default function PublicHome() {
       <section className="bg-secondary py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-3 gap-8">
           {[
-            { title: "Erfahrene Bootsführer", text: "Unsere Schiffsführer kennen die Vechte wie ihre Westentasche." },
-            { title: "Sofort buchbar", text: "Reservieren Sie online in wenigen Minuten – auch kurzfristig." },
-            { title: "Für jede Gruppe", text: "Vom Familienausflug bis zum Firmenevent für 50 Personen." },
+            { title: "Erfahrene Bootsführer", text: "Unsere Schiffsführer kennen die Vechte wie ihre Westentasche.", img: captainImg },
+            { title: "Sofort buchbar", text: "Reservieren Sie online in wenigen Minuten – auch kurzfristig.", img: publicTourImg },
+            { title: "Für jede Gruppe", text: "Vom Familienausflug bis zum Firmenevent für 50 Personen.", img: charterImg },
           ].map((u) => (
-            <div key={u.title} className="text-center">
-              <h3 className="font-semibold text-lg mb-2 text-secondary-foreground">{u.title}</h3>
-              <p className="text-secondary-foreground/80">{u.text}</p>
-            </div>
+            <Card key={u.title} className="overflow-hidden">
+              <img src={u.img} alt={u.title} loading="lazy" width={1024} height={768} className="h-48 w-full object-cover" />
+              <CardContent className="p-5 text-center">
+                <h3 className="font-semibold text-lg mb-2">{u.title}</h3>
+                <p className="text-muted-foreground">{u.text}</p>
+              </CardContent>
+            </Card>
           ))}
         </div>
       </section>
