@@ -11,6 +11,12 @@ from app.services.user_service import UserService
 from app.models.schemas import UserCreate
 from app.domain.booking import BookingStatus
 
+
+def _charter_price(boat_capacity: int, start, end) -> float:
+    hours = max(0.0, (end - start).total_seconds() / 3600.0)
+    hourly = 240.0 if boat_capacity > 14 else 160.0
+    return round(hourly * hours, 2)
+
 router = APIRouter(prefix="/api/public", tags=["public"])
 
 
@@ -50,6 +56,7 @@ def create_public_charter(payload: CharterRequest, db: Session = Depends(get_db)
         notes=payload.notes,
         catering=payload.catering,
         booking_kind="charter",
+        total_price=_charter_price(boat.capacity, payload.start_date, payload.end_date),
         payment_status="unpaid",
     )
     db.add(booking)
