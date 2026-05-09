@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { api } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
+import charterImg from "@/assets/charter.jpg";
 
 export default function PublicCharter() {
   const { data: boats = [] } = useQuery({ queryKey: ["boats"], queryFn: () => api.listBoats() });
@@ -55,8 +56,14 @@ export default function PublicCharter() {
 
   return (
     <PublicLayout>
+      <div className="relative h-64 md:h-80 overflow-hidden">
+        <img src={charterImg} alt="Privates Charterboot" width={1024} height={768} className="absolute inset-0 h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+        <div className="relative max-w-3xl mx-auto px-4 h-full flex items-end pb-6">
+          <h1 className="text-4xl md:text-5xl font-bold text-foreground drop-shadow">Privates Boot chartern</h1>
+        </div>
+      </div>
       <section className="max-w-3xl mx-auto px-4 py-12">
-        <h1 className="text-4xl font-bold mb-2">Privates Boot chartern</h1>
         <p className="text-muted-foreground mb-8">Mieten Sie ein komplettes Boot exklusiv für Ihre Gruppe.</p>
 
         <Card>
