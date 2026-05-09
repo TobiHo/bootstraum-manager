@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-from app.api.routes import auth, boats, captains, bookings, users, tour_types, public_tours, captain_absences, public_bookings
+from app.api.routes import auth, boats, captains, bookings, users, tour_types, public_tours, captain_absences, public_bookings, payments
 from app.db.database import Base, engine
 from app.init_db import init_db
 
@@ -42,6 +42,7 @@ app.include_router(tour_types.router)
 app.include_router(public_tours.router)
 app.include_router(captain_absences.router)
 app.include_router(public_bookings.router)
+app.include_router(payments.router)
 
 
 @app.get("/health")
