@@ -11,6 +11,7 @@ import PublicTours from "./pages/public/PublicTours";
 import PublicTourDetail from "./pages/public/PublicTourDetail";
 import PublicCharter from "./pages/public/PublicCharter";
 import PublicContact from "./pages/public/PublicContact";
+import { CheckoutSuccess, CheckoutCancel } from "./pages/public/CheckoutResult";
 import AdminTourTypes from "./pages/admin/TourTypes";
 import AdminPublicTours from "./pages/admin/PublicTours";
 import MyAbsences from "./pages/captain/MyAbsences";
@@ -37,6 +38,8 @@ const App = () => (
             <Route path="/touren/:slug" element={<PublicTourDetail />} />
             <Route path="/charter" element={<PublicCharter />} />
             <Route path="/kontakt" element={<PublicContact />} />
+            <Route path="/checkout/erfolg" element={<CheckoutSuccess />} />
+            <Route path="/checkout/abbruch" element={<CheckoutCancel />} />
 
             <Route path="/login" element={<Login />} />
             {/* Internal admin / staff / captain area */}

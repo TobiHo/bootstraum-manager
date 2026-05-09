@@ -19,6 +19,14 @@ class Settings(BaseSettings):
     debug: bool = True
     app_name: str = "Boat Tour Management System"
 
+    # Paddle (Billing) Configuration
+    paddle_environment: str = "sandbox"  # sandbox | production
+    paddle_api_key: str = ""
+    paddle_webhook_secret: str = ""
+    paddle_product_id: str = ""  # generic catalog product used for custom-price line items
+    paddle_success_url: str = "http://localhost:8080/checkout/erfolg"
+    paddle_cancel_url: str = "http://localhost:8080/checkout/abbruch"
+
     class Config:
         env_file = ".env"
         case_sensitive = False

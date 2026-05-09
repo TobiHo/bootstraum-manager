@@ -323,6 +323,15 @@ export const api = {
   async deleteUser(id: number) {
     await request<void>(`/api/users/${id}`, { method: "DELETE" });
   },
+  async createPaddleCheckout(bookingId: string | number) {
+    return await request<{ checkout_url: string; transaction_id: string }>(
+      "/api/payments/paddle/checkout",
+      {
+        method: "POST",
+        body: JSON.stringify({ booking_id: Number(bookingId) }),
+      }
+    );
+  },
   async registerUser(email: string, password: string, name: string, role: "admin" | "staff" | "captain" | "customer" = "customer") {
     return await request<{ access_token: string; refresh_token: string; token_type: string }>("/api/auth/register", {
       method: "POST",
