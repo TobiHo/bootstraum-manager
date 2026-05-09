@@ -38,15 +38,24 @@ export default function PublicTourDetail() {
   const [notes, setNotes] = useState("");
 
   const buy = useMutation({
-    mutationFn: () =>
-      api.buyTickets(selectedSlotId, {
+    mutationFn: async () => {
+      const booking = await api.buyTickets(selectedSlotId, {
         quantity,
         customer: { name, email, phone },
         catering,
         notes,
-      }),
+      });
+      try {
+        const { checkout_url } = await api.createPaddleCheckout(booking.id);
+        window.location.href = checkout_url;
+        return booking;
+      } catch (e) {
+        // Payment not configured yet – booking stays pending
+        return booking;
+      }
+    },
     onSuccess: () => {
-      toast({ title: "Buchung erfolgreich", description: "Wir haben Ihnen die Bestätigung per E-Mail geschickt." });
+      toast({ title: "Buchung reserviert", description: "Sie werden zur Bezahlung weitergeleitet, sofern verfügbar." });
       qc.invalidateQueries({ queryKey: ["public-tours"] });
       setSelectedSlotId("");
       setQuantity(1);
@@ -134,7 +143,7 @@ export default function PublicTourDetail() {
                 {buy.isPending ? "Wird gebucht..." : `Verbindlich buchen (€ ${total.toFixed(2)})`}
               </Button>
               <p className="text-xs text-muted-foreground text-center">
-                Bezahlung erfolgt nach Bestätigung – Online-Zahlung folgt mit Paddle-Aktivierung.
+                Sichere Online-Bezahlung über Paddle. Stornierung gemäß AGB.
               </p>
             </CardContent>
           </Card>
