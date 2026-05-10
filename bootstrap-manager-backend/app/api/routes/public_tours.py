@@ -18,6 +18,7 @@ from app.models.schemas import (
 from app.middleware.auth import get_staff_user, get_current_user
 from app.services.captain_assignment_service import CaptainAssignmentService
 from app.domain.booking import BookingStatus
+from app.models.db import Captain, CaptainAbsence
 
 router = APIRouter(prefix="/api/public-tours", tags=["public-tours"])
 
@@ -191,7 +192,61 @@ def create_series(
         except Exception:
             raise HTTPException(400, f"Invalid time format: {t}")
 
-    assigner = CaptainAssignmentService(db)
+    # Pre-load all captains and their absences for in-memory balanced assignment.
+    all_captains: List[Captain] = db.query(Captain).order_by(Captain.id).all()
+    absences = db.query(CaptainAbsence).all()
+    absences_by_cap: dict = {}
+    for a in absences:
+        absences_by_cap.setdefault(a.captain_id, []).append((a.start_date, a.end_date))
+
+    # Track per-captain counters across this series for balanced distribution.
+    weekday_count = {c.id: 0 for c in all_captains}
+    weekend_count = {c.id: 0 for c in all_captains}
+    # Track in-memory bookings per captain (start, end) to avoid conflicts within series.
+    series_slots: dict = {c.id: [] for c in all_captains}
+
+    def is_absent(cap_id: int, start_dt: datetime, end_dt: datetime) -> bool:
+        for s, e in absences_by_cap.get(cap_id, []):
+            if s < end_dt and e > start_dt:
+                return True
+        return False
+
+    def has_conflict(cap_id: int, start_dt: datetime, end_dt: datetime) -> bool:
+        # in-memory series conflicts
+        for s, e in series_slots[cap_id]:
+            if s < end_dt and e > start_dt:
+                return True
+        # existing bookings
+        b = db.query(Booking).filter(
+            Booking.captain_id == cap_id,
+            Booking.start_date < end_dt,
+            Booking.end_date > start_dt,
+            Booking.status != BookingStatus.CANCELLED,
+        ).first()
+        if b:
+            return True
+        # existing public tours
+        p = db.query(PublicTour).filter(
+            PublicTour.captain_id == cap_id,
+            PublicTour.start_date < end_dt,
+            PublicTour.end_date > start_dt,
+            PublicTour.status != "cancelled",
+        ).first()
+        return bool(p)
+
+    def pick_captain(start_dt: datetime, end_dt: datetime) -> Optional[int]:
+        is_weekend = start_dt.weekday() >= 5
+        bucket = weekend_count if is_weekend else weekday_count
+        candidates = [
+            c for c in all_captains
+            if not is_absent(c.id, start_dt, end_dt) and not has_conflict(c.id, start_dt, end_dt)
+        ]
+        if not candidates:
+            return None
+        # Sort: lowest bucket count, then lowest total, then id (stable rotation)
+        candidates.sort(key=lambda c: (bucket[c.id], weekday_count[c.id] + weekend_count[c.id], c.id))
+        return candidates[0].id
+
     created: List[PublicTour] = []
     day = payload.series_start.date()
     end_day = payload.series_end.date()
@@ -207,7 +262,16 @@ def create_series(
                 ).first()
                 if exists:
                     continue
-                cap_id = payload.captain_id or assigner.assign(payload.boat_id, start_dt, end_dt)
+                if payload.captain_id:
+                    cap_id = payload.captain_id
+                else:
+                    cap_id = pick_captain(start_dt, end_dt)
+                if cap_id is not None:
+                    series_slots.setdefault(cap_id, []).append((start_dt, end_dt))
+                    if start_dt.weekday() >= 5:
+                        weekend_count[cap_id] = weekend_count.get(cap_id, 0) + 1
+                    else:
+                        weekday_count[cap_id] = weekday_count.get(cap_id, 0) + 1
                 pt = PublicTour(
                     tour_type_id=payload.tour_type_id,
                     boat_id=payload.boat_id,
