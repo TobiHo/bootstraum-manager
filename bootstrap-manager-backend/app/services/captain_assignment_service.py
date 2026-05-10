@@ -15,11 +15,8 @@ class CaptainAssignmentService:
         self.db = db
 
     def _qualified_captains(self, boat_id: int) -> List[Captain]:
-        return (
-            self.db.query(Captain)
-            .filter(Captain.boats.any(id=boat_id))
-            .all()
-        )
+        # Every captain can operate every boat (per business rule).
+        return self.db.query(Captain).all()
 
     def _is_available(self, captain: Captain, start: datetime, end: datetime) -> bool:
         # check absences
