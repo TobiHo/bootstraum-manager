@@ -503,6 +503,23 @@ export function BookingModal({
             <Label htmlFor="catering">Verpflegung gewünscht *</Label>
           </div>
 
+          {/* Zahlungsstatus */}
+          <div>
+            <Label>Zahlungsstatus</Label>
+            <Select value={paymentStatus} onValueChange={(v) => setPaymentStatus(v as any)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="paid">Bereits bezahlt (vor Ort / Online)</SelectItem>
+                <SelectItem value="pay_on_site">Reserviert – Zahlung beim Bootsführer</SelectItem>
+                <SelectItem value="unpaid">Offen / unbezahlt</SelectItem>
+                <SelectItem value="refunded">Erstattet</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">
+              Manuelle Vor-Ort-Buchungen: wählen Sie, ob direkt gezahlt wurde oder erst beim Bootsführer.
+            </p>
+          </div>
+
           {/* Notizen */}
           <div>
             <Label htmlFor="notes">Bemerkungen</Label>
