@@ -5,20 +5,22 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { api } from "@/lib/api";
 import { Clock, Users, Ticket, Anchor, Calendar as CalIcon, ChevronRight } from "lucide-react";
-import heroImg from "@/assets/hero-boat-tour.jpg";
-import captainImg from "@/assets/captain.jpg";
-import fleetImg from "@/assets/fleet.jpg";
-import publicTourImg from "@/assets/public-tour.jpg";
-import charterImg from "@/assets/charter.jpg";
+import heroImg from "@/assets/vvv/vechtesonne.jpg";
+import sundownerImg from "@/assets/vvv/img1721.jpg";
+import charterImg from "@/assets/vvv/ganzer-tag.jpg";
+import punschImg from "@/assets/vvv/saettigung.jpg";
+import rundfahrtImg from "@/assets/vvv/dsc00926.jpg";
+import cliquenImg from "@/assets/vvv/dsc06194.jpg";
+import rangerImg from "@/assets/vvv/img8462.jpg";
 
 // Feste Reihenfolge & Bilder für die 6 Kern-Angebote
 const TOUR_ORDER: { slug: string; name: string; image: string; tagline: string }[] = [
-  { slug: "rundfahrt",   name: "Öffentliche Rundfahrten", image: publicTourImg, tagline: "Die klassische City-Rundfahrt auf der Vechte." },
-  { slug: "charter",     name: "Exklusivfahrten",         image: charterImg,    tagline: "Das ganze Boot exklusiv für Ihre Gruppe." },
-  { slug: "punsch",      name: "Punschfahrten",           image: fleetImg,      tagline: "Heißer Punsch, warme Decken, Winterstimmung." },
-  { slug: "ranger",      name: "Vechte-Ranger",           image: heroImg,       tagline: "Die Abenteuer-Tour für Kinder & Familien." },
-  { slug: "sundowner",   name: "Sundowner",               image: captainImg,    tagline: "Sonnenuntergang vom Wasser aus erleben." },
-  { slug: "cliquentour", name: "Cliquentour",             image: charterImg,    tagline: "Feiern mit Freunden auf der Vechte." },
+  { slug: "rundfahrt",   name: "Öffentliche Rundfahrten", image: rundfahrtImg, tagline: "Die klassische City-Rundfahrt auf der Vechte." },
+  { slug: "charter",     name: "Exklusivfahrten",         image: charterImg,   tagline: "Das ganze Boot exklusiv für Ihre Gruppe." },
+  { slug: "punsch",      name: "Punschfahrten",           image: punschImg,    tagline: "Heißer Punsch, warme Decken, Winterstimmung." },
+  { slug: "ranger",      name: "Vechte-Ranger",           image: rangerImg,    tagline: "Die Abenteuer-Tour für Kinder & Familien." },
+  { slug: "sundowner",   name: "Sundowner",               image: sundownerImg, tagline: "Sonnenuntergang vom Wasser aus erleben." },
+  { slug: "cliquentour", name: "Cliquentour",             image: cliquenImg,   tagline: "Feiern mit Freunden auf der Vechte." },
 ];
 
 export default function PublicHome() {
