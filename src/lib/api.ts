@@ -428,6 +428,7 @@ const tourTypePayload = (t: Omit<TourType, "id">) => ({
   max_participants: t.maxParticipants,
   image_url: t.imageUrl,
   active: t.active,
+  category: t.category ?? "rundfahrt",
 });
 
 const toPublicTour = (p: any): PublicTour => ({
