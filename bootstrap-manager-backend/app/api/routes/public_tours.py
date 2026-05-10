@@ -93,6 +93,27 @@ def create_public_tour(
     return pt
 
 
+@router.delete("/purge", status_code=status.HTTP_200_OK)
+def purge_public_tours(
+    category: Optional[str] = Query(None, description="rundfahrt | event; omit to purge all"),
+    db: Session = Depends(get_db),
+    _: User = Depends(get_staff_user),
+):
+    """Hard-delete all public tours (and their public bookings). Optionally filter by tour-type category."""
+    q = db.query(PublicTour)
+    if category:
+        q = q.join(TourType, TourType.id == PublicTour.tour_type_id).filter(TourType.category == category)
+    tours = q.all()
+    ids = [t.id for t in tours]
+    deleted_bookings = 0
+    if ids:
+        deleted_bookings = db.query(Booking).filter(Booking.public_tour_id.in_(ids)).delete(synchronize_session=False)
+        for t in tours:
+            db.delete(t)
+    db.commit()
+    return {"deleted_tours": len(ids), "deleted_bookings": deleted_bookings}
+
+
 @router.delete("/{public_tour_id}", status_code=status.HTTP_204_NO_CONTENT)
 def cancel_public_tour(
     public_tour_id: int,
@@ -204,25 +225,6 @@ def create_series(
     return created
 
 
-@router.delete("/purge", status_code=status.HTTP_200_OK)
-def purge_public_tours(
-    category: Optional[str] = Query(None, description="rundfahrt | event; omit to purge all"),
-    db: Session = Depends(get_db),
-    _: User = Depends(get_staff_user),
-):
-    """Hard-delete all public tours (and their public bookings). Optionally filter by tour-type category."""
-    q = db.query(PublicTour)
-    if category:
-        q = q.join(TourType, TourType.id == PublicTour.tour_type_id).filter(TourType.category == category)
-    tours = q.all()
-    ids = [t.id for t in tours]
-    deleted_bookings = 0
-    if ids:
-        deleted_bookings = db.query(Booking).filter(Booking.public_tour_id.in_(ids)).delete(synchronize_session=False)
-        for t in tours:
-            db.delete(t)
-    db.commit()
-    return {"deleted_tours": len(ids), "deleted_bookings": deleted_bookings}
 
 
 @router.post("/{public_tour_id}/tickets", response_model=BookingResponse, status_code=status.HTTP_201_CREATED)
