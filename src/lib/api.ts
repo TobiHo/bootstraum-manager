@@ -323,9 +323,9 @@ export const api = {
   async deleteUser(id: number) {
     await request<void>(`/api/users/${id}`, { method: "DELETE" });
   },
-  async createPaddleCheckout(bookingId: string | number) {
-    return await request<{ checkout_url: string; transaction_id: string }>(
-      "/api/payments/paddle/checkout",
+  async createStripeCheckout(bookingId: string | number) {
+    return await request<{ checkout_url: string; session_id: string }>(
+      "/api/payments/stripe/checkout",
       {
         method: "POST",
         body: JSON.stringify({ booking_id: Number(bookingId) }),
