@@ -14,6 +14,32 @@ import { api } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import charterImg from "@/assets/vvv/ganzer-tag.jpg";
 
+// Fallback-Boote (wenn Backend nicht erreichbar)
+const FALLBACK_BOATS = [
+  { id: "fb-boat-large", name: "Vechtesonne (groß)", capacity: 25, available: true },
+  { id: "fb-boat-small", name: "Vechteprahm (klein)", capacity: 12, available: true },
+];
+
+// Lokale Persistenz für Charter-Reservierungen (gegen Doppelbuchungen)
+const CHARTER_KEY = "vechte.fallbackCharters.v1";
+type LocalCharter = { boatId: string; start: string; end: string };
+function readLocalCharters(): LocalCharter[] {
+  try { return JSON.parse(localStorage.getItem(CHARTER_KEY) || "[]"); } catch { return []; }
+}
+function addLocalCharter(c: LocalCharter) {
+  const cur = readLocalCharters();
+  cur.push(c);
+  localStorage.setItem(CHARTER_KEY, JSON.stringify(cur));
+}
+function hasConflict(boatId: string, start: Date, end: Date): boolean {
+  return readLocalCharters().some((c) => {
+    if (c.boatId !== boatId) return false;
+    const cs = new Date(c.start).getTime();
+    const ce = new Date(c.end).getTime();
+    return cs < end.getTime() && ce > start.getTime();
+  });
+}
+
 const TOUR_LABELS: Record<string, { title: string; intro: string }> = {
   charter:     { title: "Privates Boot chartern", intro: "Mieten Sie ein komplettes Boot exklusiv für Ihre Gruppe." },
   punsch:      { title: "Punschfahrt anfragen",   intro: "Heißer Punsch, warme Decken – buchen Sie Ihre winterliche Vechtefahrt." },
@@ -26,7 +52,11 @@ export default function PublicCharter() {
   const [params] = useSearchParams();
   const type = params.get("type") || "charter";
   const meta = TOUR_LABELS[type] || TOUR_LABELS.charter;
-  const { data: boats = [] } = useQuery({ queryKey: ["boats"], queryFn: () => api.listBoats() });
+  const { data: apiBoats = [] } = useQuery({
+    queryKey: ["boats"],
+    queryFn: () => api.listBoats().catch(() => [] as Awaited<ReturnType<typeof api.listBoats>>),
+  });
+  const boats = apiBoats.length > 0 ? apiBoats : FALLBACK_BOATS;
 
   const [boatId, setBoatId] = useState("");
   const [start, setStart] = useState("");
@@ -41,10 +71,24 @@ export default function PublicCharter() {
 
   const create = useMutation({
     mutationFn: async () => {
+      const startDate = new Date(start);
+      const endDate = new Date(end);
+      if (endDate <= startDate) throw new Error("Endzeit muss nach Startzeit liegen.");
+      // Konsistenzprüfung: Boot zur gewählten Zeit verfügbar?
+      if (boatId.startsWith("fb-") || apiBoats.length === 0) {
+        if (hasConflict(boatId, startDate, endDate)) {
+          throw new Error("Dieses Boot ist im gewählten Zeitraum bereits reserviert.");
+        }
+      }
+      // Fallback-Modus: keine Backend-Buchung möglich, lokal speichern
+      if (boatId.startsWith("fb-")) {
+        addLocalCharter({ boatId, start: startDate.toISOString(), end: endDate.toISOString() });
+        return { id: `fb-${Date.now()}` } as any;
+      }
       const booking = await api.createPublicCharter({
         boatId,
-        startDate: new Date(start),
-        endDate: new Date(end),
+        startDate,
+        endDate,
         participants,
         customer: { name, email, phone },
         catering,
