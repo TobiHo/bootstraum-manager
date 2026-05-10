@@ -12,7 +12,7 @@ import { api } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { Plus, Pencil, X, CalendarRange } from "lucide-react";
+import { Plus, Pencil, X, CalendarRange, Trash2 } from "lucide-react";
 import type { PublicTour, TourType, Boat, Captain } from "@/types/booking";
 
 type Props = {
@@ -140,6 +140,12 @@ export function PublicTourManager({ category, title, description }: Props) {
     onError: (e: Error) => toast({ title: "Fehler", description: e.message, variant: "destructive" }),
   });
 
+  const purgeMut = useMutation({
+    mutationFn: () => api.purgePublicTours(category),
+    onSuccess: (r) => { qc.invalidateQueries({ queryKey: ["public-tours-admin"] }); toast({ title: "Gelöscht", description: `${r.deleted_tours} Termine, ${r.deleted_bookings} Buchungen entfernt.` }); },
+    onError: (e: Error) => toast({ title: "Fehler", description: e.message, variant: "destructive" }),
+  });
+
   const captainName = (id?: string) => captains.find((c) => c.id === id)?.name ?? "—";
   const boatName = (id?: string) => boats.find((b) => b.id === id)?.name ?? id ?? "—";
   const tourTypeName = (id: string) => tourTypes.find((t) => t.id === id)?.name ?? id;
@@ -152,6 +158,11 @@ export function PublicTourManager({ category, title, description }: Props) {
           <p className="text-muted-foreground text-sm">{description}</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="destructive" onClick={() => {
+            if (confirm(`Wirklich ALLE ${category === "rundfahrt" ? "Rundfahrt-Termine" : "Event-Termine"} und zugehörige Buchungen unwiderruflich löschen?`)) purgeMut.mutate();
+          }} disabled={purgeMut.isPending}>
+            <Trash2 className="h-4 w-4 mr-1" /> Alle löschen
+          </Button>
           <Dialog open={openSeries} onOpenChange={setOpenSeries}>
             <DialogTrigger asChild><Button variant="outline"><CalendarRange className="h-4 w-4 mr-1" /> Serie anlegen</Button></DialogTrigger>
             <DialogContent className="max-w-lg">
