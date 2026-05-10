@@ -6,12 +6,35 @@ from app.models.db import User, Boat, Captain, TourType, PublicTour
 from app.services.user_service import UserService
 from app.services.captain_assignment_service import CaptainAssignmentService
 from app.models.schemas import UserCreate
+from sqlalchemy import text, inspect
+
+
+def _ensure_columns():
+    """Lightweight migration: add new columns if missing (SQLite/Postgres safe)."""
+    inspector = inspect(engine)
+    additions = [
+        ("tour_type", "category", "VARCHAR(20) DEFAULT 'rundfahrt' NOT NULL"),
+        ("public_tour", "cancellation_reason", "VARCHAR(500)"),
+    ]
+    with engine.begin() as conn:
+        for table, col, ddl in additions:
+            if table not in inspector.get_table_names():
+                continue
+            cols = [c["name"] for c in inspector.get_columns(table)]
+            if col in cols:
+                continue
+            try:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}"))
+                print(f"✓ Added column {table}.{col}")
+            except Exception as e:
+                print(f"  (skip column {table}.{col}: {e})")
 
 
 def init_db():
     """Create tables and insert default data"""
     # Create tables
     Base.metadata.create_all(bind=engine)
+    _ensure_columns()
 
     db = SessionLocal()
     try:
@@ -170,6 +193,10 @@ def init_db():
             existing = db.query(TourType).filter(TourType.slug == data["slug"]).first()
             if not existing:
                 db.add(TourType(**data))
+            else:
+                # backfill category if missing
+                if not getattr(existing, "category", None):
+                    existing.category = data.get("category", "rundfahrt")
         db.commit()
         print("✓ Tour types seeded")
 
