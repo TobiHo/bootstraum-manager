@@ -4,7 +4,7 @@ import { PublicLayout } from "@/components/public/PublicLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { api } from "@/lib/api";
-import { Clock, Users, Ticket, Anchor, Calendar as CalIcon, ChevronRight } from "lucide-react";
+import { Clock, Users, Calendar as CalIcon, ChevronRight } from "lucide-react";
 import heroImg from "@/assets/vvv/vechtesonne.jpg";
 import sundownerImg from "@/assets/vvv/img1721.jpg";
 import charterImg from "@/assets/vvv/ganzer-tag.jpg";
@@ -135,18 +135,6 @@ export default function PublicHome() {
           })}
         </div>
 
-        <div className="flex flex-wrap justify-center gap-3 mt-10">
-          <Link to="/touren">
-            <Button size="lg" className="gap-2">
-              <Ticket className="h-5 w-5" /> Alle Tickets &amp; Termine
-            </Button>
-          </Link>
-          <Link to="/charter">
-            <Button size="lg" variant="outline" className="gap-2">
-              <Anchor className="h-5 w-5" /> Privates Boot mieten
-            </Button>
-          </Link>
-        </div>
       </section>
     </PublicLayout>
   );
