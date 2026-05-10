@@ -1,6 +1,6 @@
 """Public tours (scheduled slots with seat-based ticketing)."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
@@ -8,6 +8,9 @@ from app.db.database import get_db
 from app.models.db import PublicTour, TourType, Boat, Booking, User
 from app.models.schemas import (
     PublicTourCreate,
+    PublicTourUpdate,
+    PublicTourCancel,
+    PublicTourSeriesCreate,
     PublicTourResponse,
     TicketPurchase,
     BookingResponse,
@@ -24,16 +27,31 @@ def list_public_tours(
     from_date: Optional[datetime] = Query(None),
     to_date: Optional[datetime] = Query(None),
     tour_type_id: Optional[int] = None,
+    boat_id: Optional[int] = None,
+    captain_id: Optional[int] = None,
+    category: Optional[str] = None,  # rundfahrt | event
+    status_filter: Optional[str] = Query(None, alias="status"),
+    include_cancelled: bool = False,
     only_available: bool = False,
     db: Session = Depends(get_db),
 ):
-    q = db.query(PublicTour).filter(PublicTour.status == "scheduled")
+    q = db.query(PublicTour)
+    if status_filter:
+        q = q.filter(PublicTour.status == status_filter)
+    elif not include_cancelled:
+        q = q.filter(PublicTour.status == "scheduled")
     if from_date:
         q = q.filter(PublicTour.end_date >= from_date)
     if to_date:
         q = q.filter(PublicTour.start_date <= to_date)
     if tour_type_id:
         q = q.filter(PublicTour.tour_type_id == tour_type_id)
+    if boat_id:
+        q = q.filter(PublicTour.boat_id == boat_id)
+    if captain_id:
+        q = q.filter(PublicTour.captain_id == captain_id)
+    if category:
+        q = q.join(TourType, TourType.id == PublicTour.tour_type_id).filter(TourType.category == category)
     tours = q.order_by(PublicTour.start_date).all()
     if only_available:
         tours = [t for t in tours if t.seats_booked < t.seats_total]
@@ -86,6 +104,104 @@ def cancel_public_tour(
         raise HTTPException(404, "Not found")
     pt.status = "cancelled"
     db.commit()
+
+
+@router.patch("/{public_tour_id}", response_model=PublicTourResponse)
+def update_public_tour(
+    public_tour_id: int,
+    payload: PublicTourUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_staff_user),
+):
+    pt = db.query(PublicTour).filter(PublicTour.id == public_tour_id).first()
+    if not pt:
+        raise HTTPException(404, "Not found")
+    data = payload.dict(exclude_unset=True)
+    if "boat_id" in data and data["boat_id"]:
+        boat = db.query(Boat).filter(Boat.id == data["boat_id"]).first()
+        if not boat:
+            raise HTTPException(404, "Boat not found")
+        if (data.get("seats_total") or pt.seats_total) > boat.capacity:
+            raise HTTPException(400, f"seats_total exceeds boat capacity ({boat.capacity})")
+    for k, v in data.items():
+        setattr(pt, k, v)
+    db.commit()
+    db.refresh(pt)
+    return pt
+
+
+@router.post("/{public_tour_id}/cancel", response_model=PublicTourResponse)
+def cancel_with_reason(
+    public_tour_id: int,
+    payload: PublicTourCancel,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_staff_user),
+):
+    pt = db.query(PublicTour).filter(PublicTour.id == public_tour_id).first()
+    if not pt:
+        raise HTTPException(404, "Not found")
+    pt.status = "cancelled"
+    pt.cancellation_reason = payload.reason
+    db.commit()
+    db.refresh(pt)
+    return pt
+
+
+@router.post("/series", response_model=List[PublicTourResponse], status_code=status.HTTP_201_CREATED)
+def create_series(
+    payload: PublicTourSeriesCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_staff_user),
+):
+    tt = db.query(TourType).filter(TourType.id == payload.tour_type_id).first()
+    if not tt:
+        raise HTTPException(404, "Tour type not found")
+    boat = db.query(Boat).filter(Boat.id == payload.boat_id).first()
+    if not boat:
+        raise HTTPException(404, "Boat not found")
+    if payload.seats_total > boat.capacity:
+        raise HTTPException(400, f"seats_total exceeds boat capacity ({boat.capacity})")
+
+    times = []
+    for t in payload.times:
+        try:
+            hh, mm = t.split(":")
+            times.append((int(hh), int(mm)))
+        except Exception:
+            raise HTTPException(400, f"Invalid time format: {t}")
+
+    assigner = CaptainAssignmentService(db)
+    created: List[PublicTour] = []
+    day = payload.series_start.date()
+    end_day = payload.series_end.date()
+    while day <= end_day:
+        if payload.weekdays is None or day.weekday() in payload.weekdays:
+            for hh, mm in times:
+                start_dt = datetime(day.year, day.month, day.day, hh, mm)
+                end_dt = start_dt + timedelta(minutes=payload.duration_minutes)
+                # skip duplicates on same boat+start
+                exists = db.query(PublicTour).filter(
+                    PublicTour.boat_id == payload.boat_id,
+                    PublicTour.start_date == start_dt,
+                ).first()
+                if exists:
+                    continue
+                cap_id = payload.captain_id or assigner.assign(payload.boat_id, start_dt, end_dt)
+                pt = PublicTour(
+                    tour_type_id=payload.tour_type_id,
+                    boat_id=payload.boat_id,
+                    captain_id=cap_id,
+                    start_date=start_dt,
+                    end_date=end_dt,
+                    seats_total=payload.seats_total,
+                )
+                db.add(pt)
+                created.append(pt)
+        day += timedelta(days=1)
+    db.commit()
+    for pt in created:
+        db.refresh(pt)
+    return created
 
 
 @router.post("/{public_tour_id}/tickets", response_model=BookingResponse, status_code=status.HTTP_201_CREATED)
