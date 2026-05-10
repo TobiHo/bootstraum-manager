@@ -115,7 +115,7 @@ export function BookingCalendar() {
   const handleSelectEvent = useCallback((event: CalendarEvent) => {
     if (typeof event.id === "string" && event.id.startsWith("pt-")) {
       // Public tour: navigate handled separately; for now just show toast
-      toast({ title: event.title, description: "Öffentlicher Termin – Bearbeitung im Bereich „Öffentl. Termine" / „Events"." });
+      toast({ title: event.title, description: "Öffentlicher Termin – Bearbeitung im Bereich Öffentl. Termine bzw. Events." });
       return;
     }
     setSelectedEvent(event);
