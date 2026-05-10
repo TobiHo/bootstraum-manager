@@ -1,8 +1,10 @@
 """Initialize database with default users, boats, and captains"""
 
+from datetime import datetime, timedelta, time, date
 from app.db.database import SessionLocal, Base, engine
-from app.models.db import User, Boat, Captain, TourType
+from app.models.db import User, Boat, Captain, TourType, PublicTour
 from app.services.user_service import UserService
+from app.services.captain_assignment_service import CaptainAssignmentService
 from app.models.schemas import UserCreate
 
 
@@ -110,34 +112,58 @@ def init_db():
         # Seed tour types for the public webshop
         tour_types_seed = [
             {
-                "slug": "vechte-rundfahrt",
-                "name": "Vechte-Rundfahrt",
-                "description": "Entspannte 90-minütige Rundfahrt durch das Herz von Nordhorn.",
+                "slug": "rundfahrt",
+                "name": "Öffentliche Rundfahrten",
+                "description": "Die klassische 90-minütige City-Rundfahrt auf der Vechte – entspannt durchs Herz von Nordhorn.",
                 "duration_minutes": 90,
                 "price_per_ticket": 14.50,
                 "min_participants": 1,
                 "max_participants": 25,
-                "image_url": "/images/vechte-rundfahrt.jpg",
             },
             {
-                "slug": "abend-tour",
-                "name": "Abendliche Lichterfahrt",
-                "description": "Genießen Sie Nordhorn am Abend mit Lichtern entlang der Vechte.",
+                "slug": "charter",
+                "name": "Exklusivfahrten",
+                "description": "Mieten Sie das ganze Boot exklusiv für Ihre Gruppe – flexibel in Zeit, Route und Verpflegung.",
                 "duration_minutes": 120,
-                "price_per_ticket": 19.90,
+                "price_per_ticket": 290.00,
                 "min_participants": 1,
                 "max_participants": 25,
-                "image_url": "/images/abend-tour.jpg",
             },
             {
-                "slug": "kinder-piraten",
-                "name": "Kinder-Piratenfahrt",
-                "description": "Eine spannende Bootsfahrt für Familien mit Piraten-Programm.",
+                "slug": "punsch",
+                "name": "Punschfahrten",
+                "description": "Heißer Punsch, warme Decken und Winterstimmung auf der abendlichen Vechte.",
+                "duration_minutes": 90,
+                "price_per_ticket": 18.50,
+                "min_participants": 1,
+                "max_participants": 25,
+            },
+            {
+                "slug": "ranger",
+                "name": "Vechte-Ranger",
+                "description": "Die Abenteuer-Tour für Kinder & Familien – mit Ranger-Programm an Bord.",
                 "duration_minutes": 60,
                 "price_per_ticket": 9.50,
                 "min_participants": 1,
                 "max_participants": 25,
-                "image_url": "/images/kinder-piraten.jpg",
+            },
+            {
+                "slug": "sundowner",
+                "name": "Sundowner",
+                "description": "Sonnenuntergang vom Wasser aus erleben – mit Aperitif an Bord.",
+                "duration_minutes": 90,
+                "price_per_ticket": 22.00,
+                "min_participants": 1,
+                "max_participants": 25,
+            },
+            {
+                "slug": "cliquentour",
+                "name": "Cliquentour",
+                "description": "Feiern mit Freunden auf der Vechte – Musik, Snacks und gute Laune inklusive.",
+                "duration_minutes": 120,
+                "price_per_ticket": 26.00,
+                "min_participants": 1,
+                "max_participants": 25,
             },
         ]
         for data in tour_types_seed:
@@ -146,12 +172,112 @@ def init_db():
                 db.add(TourType(**data))
         db.commit()
         print("✓ Tour types seeded")
+
+        # Seed daily public tours until end of October (current year)
+        seed_public_tours(db)
     except Exception as e:
         db.rollback()
         print(f"✗ Error during database initialization: {e}")
         raise
     finally:
         db.close()
+
+
+def seed_public_tours(db):
+    """Generate ~15 public tour slots per day across one big + one small boat,
+    until end of October of the current year, with auto-assigned captains."""
+
+    big_boat = db.query(Boat).filter(Boat.name == "Vechtesonne").first()
+    small_boat = db.query(Boat).filter(Boat.name == "Vechtestromer").first()
+    if not big_boat or not small_boat:
+        print("✗ Skipping public tour seeding: boats missing")
+        return
+
+    today = date.today()
+    year = today.year
+    end_day = date(year, 10, 31)
+    if end_day < today:
+        end_day = date(year + 1, 10, 31)
+
+    # Slot templates: (boat, start_time, duration_minutes)
+    big_slots = [
+        (time(10, 0), 90),
+        (time(11, 30), 90),
+        (time(13, 0), 90),
+        (time(14, 30), 90),
+        (time(16, 0), 90),
+        (time(17, 30), 90),
+        (time(19, 0), 90),
+        (time(20, 30), 90),
+    ]
+    small_slots = [
+        (time(10, 30), 60),
+        (time(12, 0), 60),
+        (time(13, 30), 60),
+        (time(15, 0), 60),
+        (time(16, 30), 60),
+        (time(18, 0), 90),
+        (time(19, 30), 90),
+    ]
+    # 8 + 7 = 15 slots/day
+
+    tour_types = {tt.slug: tt for tt in db.query(TourType).all()}
+
+    def pick_tour_type(start_dt: datetime):
+        h = start_dt.hour
+        # Sundowner ~17-19, Punsch >=20, Ranger at 13:30 small slot, else Rundfahrt with cliquentour late evenings
+        if h >= 20:
+            return tour_types.get("punsch") or tour_types.get("rundfahrt")
+        if h >= 18:
+            return tour_types.get("sundowner") or tour_types.get("rundfahrt")
+        if start_dt.weekday() >= 5 and h == 13:
+            return tour_types.get("cliquentour") or tour_types.get("rundfahrt")
+        if h == 13 and start_dt.minute == 30:
+            return tour_types.get("ranger") or tour_types.get("rundfahrt")
+        return tour_types.get("rundfahrt")
+
+    assigner = CaptainAssignmentService(db)
+    created = 0
+    day = today
+    while day <= end_day:
+        for boat, slots in ((big_boat, big_slots), (small_boat, small_slots)):
+            for start_time, dur in slots:
+                start_dt = datetime.combine(day, start_time)
+                end_dt = start_dt + timedelta(minutes=dur)
+                exists = (
+                    db.query(PublicTour)
+                    .filter(
+                        PublicTour.boat_id == boat.id,
+                        PublicTour.start_date == start_dt,
+                    )
+                    .first()
+                )
+                if exists:
+                    continue
+                tt = pick_tour_type(start_dt)
+                if not tt:
+                    continue
+                captain_id = assigner.assign(boat.id, start_dt, end_dt)
+                pt = PublicTour(
+                    tour_type_id=tt.id,
+                    boat_id=boat.id,
+                    captain_id=captain_id,
+                    start_date=start_dt,
+                    end_date=end_dt,
+                    seats_total=boat.capacity,
+                    seats_booked=0,
+                    status="scheduled",
+                )
+                db.add(pt)
+                created += 1
+        # commit per day to keep transactions small
+        db.commit()
+        day += timedelta(days=1)
+
+    if created:
+        print(f"✓ Seeded {created} public tour slots until {end_day}")
+    else:
+        print("✓ Public tours already up-to-date")
 
 
 if __name__ == "__main__":
