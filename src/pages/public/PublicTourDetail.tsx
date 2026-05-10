@@ -47,7 +47,7 @@ export default function PublicTourDetail() {
         notes,
       });
       try {
-        const { checkout_url } = await api.createPaddleCheckout(booking.id);
+        const { checkout_url } = await api.createStripeCheckout(booking.id);
         window.location.href = checkout_url;
         return booking;
       } catch (e) {
@@ -148,7 +148,7 @@ export default function PublicTourDetail() {
                 {buy.isPending ? "Wird gebucht..." : `Verbindlich buchen (€ ${total.toFixed(2)})`}
               </Button>
               <p className="text-xs text-muted-foreground text-center">
-                Sichere Online-Bezahlung über Paddle. Stornierung gemäß AGB.
+                Sichere Online-Bezahlung über Stripe. Stornierung gemäß AGB.
               </p>
             </CardContent>
           </Card>
