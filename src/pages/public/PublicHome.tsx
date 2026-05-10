@@ -84,7 +84,7 @@ export default function PublicHome() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {TOUR_ORDER.map((entry) => {
             const t = findTour(entry.slug);
-            const href = t ? `/touren/${t.slug}` : `/touren`;
+            const href = `/touren/${t?.slug ?? entry.slug}`;
             const duration = t?.durationMinutes ?? entry.duration;
             const capacity = t?.maxParticipants ?? entry.capacity;
             const price = t?.pricePerTicket ?? entry.price;
