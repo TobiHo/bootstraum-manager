@@ -4,13 +4,15 @@ import { PublicLayout } from "@/components/public/PublicLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { api } from "@/lib/api";
 import { Clock, Users, Anchor } from "lucide-react";
-import publicTourImg from "@/assets/public-tour.jpg";
-import charterImg from "@/assets/charter.jpg";
-import fleetImg from "@/assets/fleet.jpg";
-import heroImg from "@/assets/hero-boat-tour.jpg";
-import captainImg from "@/assets/captain.jpg";
+import img1 from "@/assets/vvv/dsc00926.jpg";
+import img2 from "@/assets/vvv/dsc06194.jpg";
+import img3 from "@/assets/vvv/ganzer-tag.jpg";
+import img4 from "@/assets/vvv/img1721.jpg";
+import img5 from "@/assets/vvv/img8462.jpg";
+import img6 from "@/assets/vvv/saettigung.jpg";
+import img7 from "@/assets/vvv/vechtesonne.jpg";
 
-const tourImages = [publicTourImg, heroImg, charterImg, fleetImg, captainImg];
+const tourImages = [img1, img2, img3, img4, img5, img6, img7];
 
 export default function PublicTours() {
   const { data: tourTypes = [], isLoading } = useQuery({

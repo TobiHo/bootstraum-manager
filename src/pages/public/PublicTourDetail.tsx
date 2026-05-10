@@ -13,7 +13,7 @@ import { Clock, Users, Calendar as CalIcon, Ticket } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import publicTourImg from "@/assets/public-tour.jpg";
+import publicTourImg from "@/assets/vvv/dsc00926.jpg";
 
 export default function PublicTourDetail() {
   const { slug = "" } = useParams();
