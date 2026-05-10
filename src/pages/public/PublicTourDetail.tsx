@@ -34,8 +34,9 @@ const FALLBACK_TOUR_TYPES: Record<string, {
 };
 
 // Generiere Beispiel-Slots für die nächsten 14 Tage (täglich 11:00, 14:00, 17:00)
+const FALLBACK_BOAT_NAMES = ["Vechtesonne", "Vechtestromer", "Vechteschute", "Vechteprahm"];
 function buildFallbackSlots(slug: string, durationMin: number, capacity: number) {
-  const slots: { id: string; startDate: Date; endDate: Date; seatsTotal: number; seatsBooked: number }[] = [];
+  const slots: { id: string; startDate: Date; endDate: Date; seatsTotal: number; seatsBooked: number; boatId?: string; boatName?: string }[] = [];
   const times = [11, 14, 17];
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -50,12 +51,14 @@ function buildFallbackSlots(slug: string, durationMin: number, capacity: number)
       // deterministische "Grund-Belegung" + lokal gespeicherte Reservierungen
       const baseBooked = (d * 3 + h) % Math.max(1, capacity - 4);
       const booked = Math.min(capacity, baseBooked + (localBooked[id] ?? 0));
+      const boatName = FALLBACK_BOAT_NAMES[(d + h) % FALLBACK_BOAT_NAMES.length];
       slots.push({
         id,
         startDate: start,
         endDate: end,
         seatsTotal: capacity,
         seatsBooked: booked,
+        boatName,
       });
     }
   }
@@ -104,6 +107,13 @@ export default function PublicTourDetail() {
     ? slotsApi
     : (tt ? buildFallbackSlots(tt.slug, tt.durationMinutes, tt.maxParticipants) : []);
 
+  // Boote für Anzeige (Name pro Slot)
+  const { data: boats = [] } = useQuery({
+    queryKey: ["public-boats"],
+    queryFn: () => api.listBoats().catch(() => []),
+  });
+  const boatNameById = new Map(boats.map((b) => [String(b.id), b.name]));
+
   const [filterFrom, setFilterFrom] = useState<string>("");
   const [filterTo, setFilterTo] = useState<string>("");
   const filteredSlots = slots.filter((s) => {
@@ -129,8 +139,15 @@ export default function PublicTourDetail() {
   // Bump zur erzwungenen Neuberechnung der Fallback-Slots nach lokaler Reservierung
   const [, setLocalTick] = useState(0);
 
+  const selectedSlot = slots.find((s) => s.id === selectedSlotId);
+  const freeSelected = selectedSlot ? selectedSlot.seatsTotal - selectedSlot.seatsBooked : 0;
+
   const buy = useMutation({
     mutationFn: async () => {
+      if (!selectedSlot) throw new Error("Bitte einen Termin auswählen");
+      if (quantity > freeSelected) {
+        throw new Error(`Nur noch ${freeSelected} Plätze verfügbar`);
+      }
       // Fallback-Pfad: Backend nicht erreichbar – Reservierung lokal persistieren
       if (selectedSlotId.startsWith("fb-")) {
         addLocalBooking(selectedSlotId, quantity);
@@ -231,16 +248,24 @@ export default function PublicTourDetail() {
             {filteredSlots.map((s) => {
               const free = s.seatsTotal - s.seatsBooked;
               const isSelected = s.id === selectedSlotId;
+              const sold = free <= 0;
+              const slotBoatName = (s as any).boatName || ((s as any).boatId ? boatNameById.get(String((s as any).boatId)) : undefined);
               return (
                 <button
                   key={s.id}
                   type="button"
-                  onClick={() => setSelectedSlotId(s.id)}
-                  className={`text-left rounded-lg border p-4 transition ${isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
+                  disabled={sold}
+                  onClick={() => { setSelectedSlotId(s.id); setQuantity(Math.min(quantity, free)); }}
+                  className={`text-left rounded-lg border p-4 transition ${sold ? "opacity-50 cursor-not-allowed border-border" : isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
                 >
                   <div className="font-semibold">{format(s.startDate, "EEEE, d. MMMM yyyy", { locale: de })}</div>
                   <div className="text-sm text-muted-foreground">{format(s.startDate, "HH:mm")} – {format(s.endDate, "HH:mm")} Uhr</div>
-                  <div className="text-sm mt-1">{free} von {s.seatsTotal} Plätzen frei</div>
+                  {slotBoatName && (
+                    <div className="text-xs text-muted-foreground mt-1">Boot: <span className="font-medium text-foreground">{slotBoatName}</span></div>
+                  )}
+                  <div className={`text-sm mt-1 ${sold ? "text-destructive font-medium" : ""}`}>
+                    {sold ? "Ausgebucht" : `${free} von ${s.seatsTotal} Plätzen frei`}
+                  </div>
                 </button>
               );
             })}
@@ -254,7 +279,17 @@ export default function PublicTourDetail() {
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <Label>Anzahl Tickets</Label>
-                  <Input type="number" min={1} value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} />
+                  <Input
+                    type="number"
+                    min={1}
+                    max={freeSelected}
+                    value={quantity}
+                    onChange={(e) => {
+                      const n = Number(e.target.value);
+                      setQuantity(Math.max(1, Math.min(freeSelected, isNaN(n) ? 1 : n)));
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Noch {freeSelected} {freeSelected === 1 ? "Platz" : "Plätze"} verfügbar</p>
                 </div>
                 <div className="flex items-end font-bold text-lg text-primary">Gesamt: € {total.toFixed(2)}</div>
               </div>
@@ -290,7 +325,7 @@ export default function PublicTourDetail() {
               <Button
                 size="lg"
                 onClick={() => buy.mutate()}
-                disabled={!name || !email || !phone || quantity < 1 || buy.isPending}
+                disabled={!name || !email || !phone || quantity < 1 || quantity > freeSelected || buy.isPending}
                 className="w-full"
               >
                 {buy.isPending
