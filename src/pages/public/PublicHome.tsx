@@ -13,14 +13,15 @@ import rundfahrtImg from "@/assets/vvv/dsc00926.jpg";
 import cliquenImg from "@/assets/vvv/dsc06194.jpg";
 import rangerImg from "@/assets/vvv/img8462.jpg";
 
-// Feste Reihenfolge & Bilder für die 6 Kern-Angebote
-const TOUR_ORDER: { slug: string; name: string; image: string; tagline: string }[] = [
-  { slug: "rundfahrt",   name: "Öffentliche Rundfahrten", image: rundfahrtImg, tagline: "Die klassische City-Rundfahrt auf der Vechte." },
-  { slug: "charter",     name: "Exklusivfahrten",         image: charterImg,   tagline: "Das ganze Boot exklusiv für Ihre Gruppe." },
-  { slug: "punsch",      name: "Punschfahrten",           image: punschImg,    tagline: "Heißer Punsch, warme Decken, Winterstimmung." },
-  { slug: "ranger",      name: "Vechte-Ranger",           image: rangerImg,    tagline: "Die Abenteuer-Tour für Kinder & Familien." },
-  { slug: "sundowner",   name: "Sundowner",               image: sundownerImg, tagline: "Sonnenuntergang vom Wasser aus erleben." },
-  { slug: "cliquentour", name: "Cliquentour",             image: cliquenImg,   tagline: "Feiern mit Freunden auf der Vechte." },
+// Feste Reihenfolge, Bilder & Standardpreise für die 6 Kern-Angebote
+// (dient zugleich als Fallback, falls das Backend nicht erreichbar ist)
+const TOUR_ORDER = [
+  { slug: "rundfahrt",   name: "Öffentliche Rundfahrten", image: rundfahrtImg, tagline: "Die klassische City-Rundfahrt auf der Vechte.",          price: 14.5,  duration: 90,  capacity: 25 },
+  { slug: "charter",     name: "Exklusivfahrten",         image: charterImg,   tagline: "Das ganze Boot exklusiv für Ihre Gruppe.",                price: 290,   duration: 120, capacity: 25 },
+  { slug: "punsch",      name: "Punschfahrten",           image: punschImg,    tagline: "Heißer Punsch, warme Decken, Winterstimmung.",            price: 18.5,  duration: 90,  capacity: 25 },
+  { slug: "ranger",      name: "Vechte-Ranger",           image: rangerImg,    tagline: "Die Abenteuer-Tour für Kinder & Familien.",               price: 9.5,   duration: 60,  capacity: 25 },
+  { slug: "sundowner",   name: "Sundowner",               image: sundownerImg, tagline: "Sonnenuntergang vom Wasser aus erleben.",                 price: 22,    duration: 90,  capacity: 25 },
+  { slug: "cliquentour", name: "Cliquentour",             image: cliquenImg,   tagline: "Feiern mit Freunden auf der Vechte.",                     price: 26,    duration: 120, capacity: 25 },
 ];
 
 export default function PublicHome() {
@@ -85,6 +86,11 @@ export default function PublicHome() {
           {TOUR_ORDER.map((entry) => {
             const t = findTour(entry.slug);
             const href = t ? `/touren/${t.slug}` : `/touren`;
+            const duration = t?.durationMinutes ?? entry.duration;
+            const capacity = t?.maxParticipants ?? entry.capacity;
+            const price = t?.pricePerTicket ?? entry.price;
+            const priceLabel = entry.slug === "charter" ? `ab € ${price.toFixed(2)}` : `€ ${price.toFixed(2)}`;
+            const priceSuffix = entry.slug === "charter" ? "pro Boot" : "pro Person";
             return (
               <Link key={entry.slug} to={href} className="group">
                 <Card className="overflow-hidden hover:shadow-lg transition h-full flex flex-col border-t-4 border-t-primary/0 hover:border-t-primary">
@@ -110,18 +116,13 @@ export default function PublicHome() {
                     </p>
                     <div className="mt-auto flex items-center justify-between text-sm">
                       <div className="flex items-center gap-3 text-muted-foreground">
-                        {t && (
-                          <>
-                            <span className="flex items-center gap-1"><Clock className="h-4 w-4" /> {t.durationMinutes} Min.</span>
-                            <span className="flex items-center gap-1"><Users className="h-4 w-4" /> {t.maxParticipants}</span>
-                          </>
-                        )}
+                        <span className="flex items-center gap-1"><Clock className="h-4 w-4" /> {duration} Min.</span>
+                        <span className="flex items-center gap-1"><Users className="h-4 w-4" /> {capacity}</span>
                       </div>
-                      {t ? (
-                        <span className="font-bold text-primary">€ {t.pricePerTicket.toFixed(2)}</span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">auf Anfrage</span>
-                      )}
+                      <div className="text-right leading-tight">
+                        <div className="font-bold text-primary">{priceLabel}</div>
+                        <div className="text-[11px] text-muted-foreground">{priceSuffix}</div>
+                      </div>
                     </div>
                     <div className="mt-4 flex items-center gap-2 text-primary font-semibold text-sm">
                       <CalIcon className="h-4 w-4" /> Termine im Kalender ansehen
