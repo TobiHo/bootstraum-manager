@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { api } from "@/lib/api";
 import { Clock, Users, Calendar as CalIcon, Ticket } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -128,6 +129,13 @@ export default function PublicTourDetail() {
     return true;
   });
 
+  // Pagination: nur die nächsten 6 Termine zeigen, blätterbar
+  const PAGE_SIZE = 6;
+  const [page, setPage] = useState(0);
+  useEffect(() => { setPage(0); }, [filterFrom, filterTo, slots.length]);
+  const totalPages = Math.max(1, Math.ceil(filteredSlots.length / PAGE_SIZE));
+  const pageSlots = filteredSlots.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+
   const [selectedSlotId, setSelectedSlotId] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
   const [name, setName] = useState("");
@@ -244,8 +252,9 @@ export default function PublicTourDetail() {
             Keine Termine im gewählten Zeitraum. Sie können <Link to="/charter" className="text-primary underline">ein Boot privat chartern</Link>.
           </CardContent></Card>
         ) : (
+        <>
           <div className="grid sm:grid-cols-2 gap-3 mb-8">
-            {filteredSlots.map((s) => {
+            {pageSlots.map((s) => {
               const free = s.seatsTotal - s.seatsBooked;
               const isSelected = s.id === selectedSlotId;
               const sold = free <= 0;
@@ -270,6 +279,20 @@ export default function PublicTourDetail() {
               );
             })}
           </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mb-8">
+              <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>
+                <ChevronLeft className="h-4 w-4 mr-1" /> Frühere
+              </Button>
+              <div className="text-sm text-muted-foreground">
+                Seite {page + 1} von {totalPages} · {filteredSlots.length} Termine insgesamt
+              </div>
+              <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}>
+                Spätere <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          )}
+        </>
         )}
 
         {selectedSlotId && (

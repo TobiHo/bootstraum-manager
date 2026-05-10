@@ -75,6 +75,7 @@ export function BookingModal({
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [tourType, setTourType] = useState<string>("");
+  const [paymentStatus, setPaymentStatus] = useState<"unpaid" | "paid" | "pay_on_site">("unpaid");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
@@ -154,6 +155,7 @@ export function BookingModal({
       setCatering(booking.catering);
       setNotes(booking.notes || "");
       setTourType(booking.tourType || "");
+      setPaymentStatus((booking.paymentStatus as any) || "unpaid");
       setStartDate(format(booking.startDate, "yyyy-MM-dd'T'HH:mm"));
       setEndDate(format(booking.endDate, "yyyy-MM-dd'T'HH:mm"));
     }
@@ -167,6 +169,7 @@ export function BookingModal({
     setCatering(false);
     setNotes("");
     setTourType("");
+    setPaymentStatus("unpaid");
     setStartDate("");
     setEndDate("");
     setErrors({});
@@ -221,7 +224,8 @@ export function BookingModal({
       catering,
       notes,
       tourType,
-      status: "confirmed"
+      status: "confirmed",
+      paymentStatus,
     };
 
     // Warn if booking is in the past
@@ -497,6 +501,23 @@ export function BookingModal({
               onCheckedChange={setCatering}
             />
             <Label htmlFor="catering">Verpflegung gewünscht *</Label>
+          </div>
+
+          {/* Zahlungsstatus */}
+          <div>
+            <Label>Zahlungsstatus</Label>
+            <Select value={paymentStatus} onValueChange={(v) => setPaymentStatus(v as any)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="paid">Bereits bezahlt (vor Ort / Online)</SelectItem>
+                <SelectItem value="pay_on_site">Reserviert – Zahlung beim Bootsführer</SelectItem>
+                <SelectItem value="unpaid">Offen / unbezahlt</SelectItem>
+                <SelectItem value="refunded">Erstattet</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">
+              Manuelle Vor-Ort-Buchungen: wählen Sie, ob direkt gezahlt wurde oder erst beim Bootsführer.
+            </p>
           </div>
 
           {/* Notizen */}

@@ -35,6 +35,7 @@ export interface BookingData {
   notes?: string;
   tourType?: string;
   status: 'confirmed' | 'pending' | 'cancelled';
+  paymentStatus?: 'unpaid' | 'paid' | 'pay_on_site' | 'refunded';
   createdAt: Date;
 }
 

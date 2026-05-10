@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { PublicLayout } from "@/components/public/PublicLayout";
@@ -8,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { api } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
@@ -58,7 +58,17 @@ export default function PublicCharter() {
   });
   const boats = apiBoats.length > 0 ? apiBoats : FALLBACK_BOATS;
 
-  const [boatId, setBoatId] = useState("");
+  // Tour-Typ (für Dauer-Default bei Events wie Punsch/Sundowner/Cliquen/Ranger)
+  const { data: tourTypes = [] } = useQuery({
+    queryKey: ["tour-types-public"],
+    queryFn: () => api.listTourTypes(true).catch(() => []),
+  });
+  const matchedTourType = useMemo(
+    () => tourTypes.find((t) => t.slug === type || t.slug.startsWith(type)),
+    [tourTypes, type]
+  );
+  const defaultDurationMin = matchedTourType?.durationMinutes ?? (type === "charter" ? 120 : 90);
+
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [participants, setParticipants] = useState(2);
@@ -69,8 +79,28 @@ export default function PublicCharter() {
   const [notes, setNotes] = useState(type !== "charter" ? `Tour-Wunsch: ${meta.title}` : "");
   const [paymentMethod, setPaymentMethod] = useState<"online" | "onsite">("online");
 
+  // Endzeit automatisch aus Startzeit + Tour-Dauer berechnen
+  useEffect(() => {
+    if (!start) { setEnd(""); return; }
+    const s = new Date(start);
+    if (isNaN(s.getTime())) return;
+    const e = new Date(s.getTime() + defaultDurationMin * 60_000);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    setEnd(`${e.getFullYear()}-${pad(e.getMonth() + 1)}-${pad(e.getDate())}T${pad(e.getHours())}:${pad(e.getMinutes())}`);
+  }, [start, defaultDurationMin]);
+
+  // Boot automatisch nach Personenanzahl wählen: kleinstes verfügbares Boot mit ausreichender Kapazität
+  const autoBoat = useMemo(() => {
+    const candidates = boats
+      .filter((b) => b.available && b.capacity >= participants)
+      .sort((a, b) => a.capacity - b.capacity);
+    return candidates[0];
+  }, [boats, participants]);
+  const boatId = autoBoat?.id ?? "";
+
   const create = useMutation({
     mutationFn: async () => {
+      if (!boatId) throw new Error("Kein passendes Boot für die gewählte Personenanzahl verfügbar.");
       const startDate = new Date(start);
       const endDate = new Date(end);
       if (endDate <= startDate) throw new Error("Endzeit muss nach Startzeit liegen.");
@@ -112,13 +142,11 @@ export default function PublicCharter() {
           ? "Zahlung erfolgt vor Ort. Wir bestätigen den Termin per E-Mail."
           : "Sie werden ggf. zur Bezahlung weitergeleitet.",
       });
-      setBoatId(""); setStart(""); setEnd(""); setParticipants(2);
+      setStart(""); setEnd(""); setParticipants(2);
       setName(""); setEmail(""); setPhone(""); setNotes(""); setCatering(false);
     },
     onError: (e: Error) => toast({ title: "Fehler", description: e.message, variant: "destructive" }),
   });
-
-  const eligibleBoats = boats.filter((b) => b.available && b.capacity >= participants);
 
   return (
     <PublicLayout>
@@ -135,25 +163,25 @@ export default function PublicCharter() {
         <Card>
           <CardContent className="p-6 space-y-4">
             <div className="grid sm:grid-cols-2 gap-4">
-              <div><Label>Start *</Label><Input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} /></div>
-              <div><Label>Ende *</Label><Input type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} /></div>
+              <div>
+                <Label>Start *</Label>
+                <Input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} />
+              </div>
+              <div>
+                <Label>Ende (automatisch)</Label>
+                <Input type="datetime-local" value={end} readOnly className="bg-muted" />
+                <p className="text-xs text-muted-foreground mt-1">Berechnet aus Tour-Dauer ({defaultDurationMin} Min.)</p>
+              </div>
             </div>
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div>
-                <Label>Personenanzahl *</Label>
-                <Input type="number" min={1} value={participants} onChange={(e) => setParticipants(Number(e.target.value))} />
-              </div>
-              <div>
-                <Label>Boot wählen *</Label>
-                <Select value={boatId} onValueChange={setBoatId}>
-                  <SelectTrigger><SelectValue placeholder="Boot auswählen" /></SelectTrigger>
-                  <SelectContent>
-                    {eligibleBoats.map((b) => (
-                      <SelectItem key={b.id} value={b.id}>{b.name} (max. {b.capacity})</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div>
+              <Label>Personenanzahl *</Label>
+              <Input type="number" min={1} value={participants} onChange={(e) => setParticipants(Number(e.target.value))} />
+              <p className="text-xs text-muted-foreground mt-1">
+                {autoBoat
+                  ? <>Wir ordnen automatisch ein passendes Boot zu: <span className="font-medium text-foreground">{autoBoat.name}</span> (max. {autoBoat.capacity} Personen)</>
+                  : <span className="text-destructive">Aktuell ist kein Boot mit ausreichender Kapazität verfügbar.</span>
+                }
+              </p>
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
               <div><Label>Name *</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
