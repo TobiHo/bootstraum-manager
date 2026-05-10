@@ -267,6 +267,7 @@ class TourTypeCreate(BaseModel):
     max_participants: int = Field(50, ge=1)
     image_url: Optional[str] = Field(None, max_length=500)
     active: bool = True
+    category: str = Field("rundfahrt", pattern="^(rundfahrt|event)$")
 
 
 class TourTypeUpdate(BaseModel):
@@ -279,6 +280,7 @@ class TourTypeUpdate(BaseModel):
     max_participants: Optional[int] = Field(None, ge=1)
     image_url: Optional[str] = Field(None, max_length=500)
     active: Optional[bool] = None
+    category: Optional[str] = Field(None, pattern="^(rundfahrt|event)$")
 
 
 class TourTypeResponse(BaseModel):
@@ -292,6 +294,7 @@ class TourTypeResponse(BaseModel):
     max_participants: int
     image_url: Optional[str]
     active: bool
+    category: str = "rundfahrt"
     created_at: datetime
     updated_at: datetime
 
@@ -308,6 +311,31 @@ class PublicTourCreate(BaseModel):
     seats_total: int = Field(..., gt=0)
 
 
+class PublicTourUpdate(BaseModel):
+    boat_id: Optional[int] = None
+    captain_id: Optional[int] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    seats_total: Optional[int] = Field(None, gt=0)
+    tour_type_id: Optional[int] = None
+
+
+class PublicTourCancel(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=500)
+
+
+class PublicTourSeriesCreate(BaseModel):
+    tour_type_id: int
+    boat_id: int
+    captain_id: Optional[int] = None
+    seats_total: int = Field(..., gt=0)
+    series_start: datetime  # date from
+    series_end: datetime  # date until (inclusive)
+    weekdays: Optional[List[int]] = None  # 0=Mon..6=Sun, None = all days
+    times: List[str] = Field(..., min_items=1)  # ["10:00", "14:30"] - one slot per time per day
+    duration_minutes: int = Field(90, gt=0)
+
+
 class PublicTourResponse(BaseModel):
     id: int
     tour_type_id: int
@@ -318,6 +346,7 @@ class PublicTourResponse(BaseModel):
     seats_total: int
     seats_booked: int
     status: str
+    cancellation_reason: Optional[str] = None
     created_at: datetime
 
     class Config:
