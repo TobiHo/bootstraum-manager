@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { PublicLayout } from "@/components/public/PublicLayout";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { api } from "@/lib/api";
 import { Clock, Users, Calendar as CalIcon, ChevronRight } from "lucide-react";
