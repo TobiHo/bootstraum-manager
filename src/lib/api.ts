@@ -309,6 +309,10 @@ export const api = {
   async cancelPublicTour(id: string) {
     await request<void>(`/api/public-tours/${id}`, { method: "DELETE" });
   },
+  async purgePublicTours(category?: "rundfahrt" | "event") {
+    const qs = category ? `?category=${category}` : "";
+    return request<{ deleted_tours: number; deleted_bookings: number }>(`/api/public-tours/purge${qs}`, { method: "DELETE" });
+  },
   async buyTickets(publicTourId: string, payload: { quantity: number; customer: { name: string; email: string; phone: string }; catering: boolean; notes?: string; paymentMethod?: "online" | "onsite" }) {
     return toBooking(await request<ApiBooking>(`/api/public-tours/${publicTourId}/tickets`, {
       method: "POST",
