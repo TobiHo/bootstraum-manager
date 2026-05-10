@@ -258,7 +258,7 @@ export const api = {
   async cancelPublicTour(id: string) {
     await request<void>(`/api/public-tours/${id}`, { method: "DELETE" });
   },
-  async buyTickets(publicTourId: string, payload: { quantity: number; customer: { name: string; email: string; phone: string }; catering: boolean; notes?: string }) {
+  async buyTickets(publicTourId: string, payload: { quantity: number; customer: { name: string; email: string; phone: string }; catering: boolean; notes?: string; paymentMethod?: "online" | "onsite" }) {
     return toBooking(await request<ApiBooking>(`/api/public-tours/${publicTourId}/tickets`, {
       method: "POST",
       body: JSON.stringify({
@@ -269,11 +269,12 @@ export const api = {
         customer_phone: payload.customer.phone,
         catering: payload.catering,
         notes: payload.notes ?? null,
+        payment_method: payload.paymentMethod ?? "online",
       }),
     }));
   },
   // ============ Public Charter ============
-  async createPublicCharter(payload: { boatId: string; startDate: Date; endDate: Date; participants: number; customer: { name: string; email: string; phone: string }; catering: boolean; notes?: string; tourType?: string }) {
+  async createPublicCharter(payload: { boatId: string; startDate: Date; endDate: Date; participants: number; customer: { name: string; email: string; phone: string }; catering: boolean; notes?: string; tourType?: string; paymentMethod?: "online" | "onsite" }) {
     return toBooking(await request<ApiBooking>("/api/public/charter", {
       method: "POST",
       body: JSON.stringify({
@@ -287,6 +288,7 @@ export const api = {
         catering: payload.catering,
         notes: payload.notes ?? null,
         tour_type: payload.tourType ?? null,
+        payment_method: payload.paymentMethod ?? "online",
       }),
     }));
   },

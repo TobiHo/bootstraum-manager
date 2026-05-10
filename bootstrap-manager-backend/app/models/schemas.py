@@ -332,6 +332,7 @@ class TicketPurchase(BaseModel):
     customer_phone: str = Field(..., min_length=1, max_length=20)
     catering: bool = False
     notes: Optional[str] = Field(None, max_length=1000)
+    payment_method: str = Field("online", pattern="^(online|onsite)$")
 
 
 class CharterRequest(BaseModel):
@@ -346,6 +347,7 @@ class CharterRequest(BaseModel):
     catering: bool = False
     notes: Optional[str] = Field(None, max_length=1000)
     tour_type: Optional[str] = Field(None, max_length=50)
+    payment_method: str = Field("online", pattern="^(online|onsite)$")
 
 
 class CaptainAbsenceCreate(BaseModel):
