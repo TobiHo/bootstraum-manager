@@ -233,11 +233,16 @@ export const api = {
     await request<void>(`/api/tour-types/${id}`, { method: "DELETE" });
   },
   // ============ Public Tours (slots) ============
-  async listPublicTours(params: { from?: Date; to?: Date; tourTypeId?: string; onlyAvailable?: boolean } = {}) {
+  async listPublicTours(params: { from?: Date; to?: Date; tourTypeId?: string; boatId?: string; captainId?: string; category?: "rundfahrt" | "event"; status?: string; includeCancelled?: boolean; onlyAvailable?: boolean } = {}) {
     const qs = new URLSearchParams();
     if (params.from) qs.set("from_date", params.from.toISOString());
     if (params.to) qs.set("to_date", params.to.toISOString());
     if (params.tourTypeId) qs.set("tour_type_id", params.tourTypeId);
+    if (params.boatId) qs.set("boat_id", params.boatId);
+    if (params.captainId) qs.set("captain_id", params.captainId);
+    if (params.category) qs.set("category", params.category);
+    if (params.status) qs.set("status", params.status);
+    if (params.includeCancelled) qs.set("include_cancelled", "true");
     if (params.onlyAvailable) qs.set("only_available", "true");
     const data = await request<any[]>(`/api/public-tours${qs.toString() ? `?${qs}` : ""}`);
     return data.map(toPublicTour);
@@ -254,6 +259,52 @@ export const api = {
         seats_total: p.seatsTotal,
       }),
     }));
+  },
+  async updatePublicTour(id: string, p: { tourTypeId?: string; boatId?: string; captainId?: string | null; startDate?: Date; endDate?: Date; seatsTotal?: number }) {
+    const body: any = {};
+    if (p.tourTypeId) body.tour_type_id = Number(p.tourTypeId);
+    if (p.boatId) body.boat_id = Number(p.boatId);
+    if (p.captainId !== undefined) body.captain_id = p.captainId ? Number(p.captainId) : null;
+    if (p.startDate) body.start_date = p.startDate.toISOString();
+    if (p.endDate) body.end_date = p.endDate.toISOString();
+    if (p.seatsTotal != null) body.seats_total = p.seatsTotal;
+    return toPublicTour(await request<any>(`/api/public-tours/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }));
+  },
+  async cancelPublicTourWithReason(id: string, reason: string) {
+    return toPublicTour(await request<any>(`/api/public-tours/${id}/cancel`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }));
+  },
+  async createPublicTourSeries(p: {
+    tourTypeId: string;
+    boatId: string;
+    captainId?: string;
+    seatsTotal: number;
+    seriesStart: Date;
+    seriesEnd: Date;
+    weekdays?: number[];
+    times: string[]; // ["10:00", "14:00"]
+    durationMinutes: number;
+  }) {
+    const data = await request<any[]>("/api/public-tours/series", {
+      method: "POST",
+      body: JSON.stringify({
+        tour_type_id: Number(p.tourTypeId),
+        boat_id: Number(p.boatId),
+        captain_id: p.captainId ? Number(p.captainId) : null,
+        seats_total: p.seatsTotal,
+        series_start: p.seriesStart.toISOString(),
+        series_end: p.seriesEnd.toISOString(),
+        weekdays: p.weekdays ?? null,
+        times: p.times,
+        duration_minutes: p.durationMinutes,
+      }),
+    });
+    return data.map(toPublicTour);
   },
   async cancelPublicTour(id: string) {
     await request<void>(`/api/public-tours/${id}`, { method: "DELETE" });
@@ -334,6 +385,17 @@ export const api = {
       }
     );
   },
+  // ============ Reports ============
+  async report(kind: "finance" | "tours" | "captains" | "boats" | "customers", params: { from?: Date; to?: Date; boatId?: string; captainId?: string; tourTypeId?: string; paymentMethod?: string } = {}) {
+    const qs = new URLSearchParams();
+    if (params.from) qs.set("from_date", params.from.toISOString());
+    if (params.to) qs.set("to_date", params.to.toISOString());
+    if (params.boatId) qs.set("boat_id", params.boatId);
+    if (params.captainId) qs.set("captain_id", params.captainId);
+    if (params.tourTypeId) qs.set("tour_type_id", params.tourTypeId);
+    if (params.paymentMethod) qs.set("payment_method", params.paymentMethod);
+    return await request<any>(`/api/reports/${kind}${qs.toString() ? `?${qs}` : ""}`);
+  },
   async registerUser(email: string, password: string, name: string, role: "admin" | "staff" | "captain" | "customer" = "customer") {
     return await request<{ access_token: string; refresh_token: string; token_type: string }>("/api/auth/register", {
       method: "POST",
@@ -353,6 +415,7 @@ const toTourType = (t: any): TourType => ({
   maxParticipants: t.max_participants,
   imageUrl: t.image_url ?? undefined,
   active: t.active,
+  category: (t.category as any) ?? "rundfahrt",
 });
 
 const tourTypePayload = (t: Omit<TourType, "id">) => ({
@@ -377,6 +440,7 @@ const toPublicTour = (p: any): PublicTour => ({
   seatsTotal: p.seats_total,
   seatsBooked: p.seats_booked,
   status: p.status,
+  cancellationReason: p.cancellation_reason ?? undefined,
 });
 
 const toAbsence = (a: any): CaptainAbsence => ({

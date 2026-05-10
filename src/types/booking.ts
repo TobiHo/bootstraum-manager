@@ -57,6 +57,7 @@ export interface TourType {
   maxParticipants: number;
   imageUrl?: string;
   active: boolean;
+  category?: "rundfahrt" | "event";
 }
 
 export interface PublicTour {
@@ -69,6 +70,7 @@ export interface PublicTour {
   seatsTotal: number;
   seatsBooked: number;
   status: "scheduled" | "cancelled" | "completed";
+  cancellationReason?: string;
 }
 
 export interface CaptainAbsence {
