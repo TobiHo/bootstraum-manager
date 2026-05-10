@@ -5,7 +5,7 @@ import "moment/locale/de";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookingModal } from "./BookingModal";
-import { Boat, CalendarEvent, BookingData, Captain } from "@/types/booking";
+import { Boat, CalendarEvent, BookingData, Captain, PublicTour, TourType } from "@/types/booking";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -35,16 +35,26 @@ export function BookingCalendar() {
   const [bookings, setBookings] = useState<BookingData[]>([]);
   const [boats, setBoats] = useState<Boat[]>([]);
   const [captains, setCaptains] = useState<Captain[]>([]);
+  const [publicTours, setPublicTours] = useState<PublicTour[]>([]);
+  const [tourTypes, setTourTypes] = useState<TourType[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<{ start: Date; end: Date } | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
   useEffect(() => {
-    Promise.all([api.listBookings(), api.listBoats(), api.listCaptains()])
-      .then(([bookingData, boatData, captainData]) => {
+    Promise.all([
+      api.listBookings(),
+      api.listBoats(),
+      api.listCaptains(),
+      api.listPublicTours({ includeCancelled: true }),
+      api.listTourTypes(),
+    ])
+      .then(([bookingData, boatData, captainData, ptData, ttData]) => {
         setBookings(bookingData);
         setBoats(boatData);
         setCaptains(captainData);
+        setPublicTours(ptData);
+        setTourTypes(ttData);
       })
       .catch((error) => toast({
         title: "Kalenderdaten konnten nicht geladen werden",
@@ -54,7 +64,7 @@ export function BookingCalendar() {
   }, [toast]);
 
   // Convert bookings to calendar events
-  const events: CalendarEvent[] = bookings.map(booking => {
+  const bookingEvents: CalendarEvent[] = bookings.map(booking => {
     const boat = boats.find(b => b.id === booking.boatId);
     return {
       id: booking.id,
@@ -64,6 +74,37 @@ export function BookingCalendar() {
       resource: booking
     };
   });
+
+  const publicTourEvents: CalendarEvent[] = publicTours.map((pt) => {
+    const boat = boats.find((b) => b.id === pt.boatId);
+    const tt = tourTypes.find((t) => t.id === pt.tourTypeId);
+    const cap = captains.find((c) => c.id === pt.captainId);
+    const cancelled = pt.status === "cancelled";
+    const title = cancelled
+      ? `❌ ${tt?.name || "Tour"} – ${pt.cancellationReason || "abgesagt"}`
+      : `${tt?.name || "Tour"} • ${boat?.name || "Boot"} • ${pt.seatsBooked}/${pt.seatsTotal}${cap ? ` • ${cap.name}` : ""}`;
+    return {
+      id: `pt-${pt.id}`,
+      title,
+      start: pt.startDate,
+      end: pt.endDate,
+      resource: {
+        id: `pt-${pt.id}`,
+        startDate: pt.startDate,
+        endDate: pt.endDate,
+        customer: { name: tt?.name || "Tour", email: "", phone: "" },
+        participants: pt.seatsBooked,
+        boatId: pt.boatId,
+        captainId: pt.captainId || "",
+        catering: false,
+        tourType: (tt?.category === "event" ? "event" : "rundfahrt"),
+        status: cancelled ? "cancelled" : "confirmed",
+        createdAt: new Date(),
+      } as BookingData,
+    };
+  });
+
+  const events: CalendarEvent[] = [...bookingEvents, ...publicTourEvents];
 
   const handleSelectSlot = useCallback(({ start, end }: { start: Date; end: Date }) => {
     setSelectedSlot({ start, end });
@@ -133,18 +174,16 @@ export function BookingCalendar() {
     let backgroundColor = "hsl(210 100% 35%)";
     let color = "white";
 
-    switch (booking.status) {
-      case "pending":
-        backgroundColor = "hsl(38 92% 50%)";
-        color = "white";
-        break;
-      case "cancelled":
-        backgroundColor = "hsl(0 84% 50%)";
-        color = "white";
-        break;
-      default:
-        backgroundColor = "hsl(210 100% 35%)";
-        color = "white";
+    if (booking.status === "cancelled") {
+      backgroundColor = "hsl(0 84% 50%)";
+    } else if (booking.tourType === "rundfahrt") {
+      backgroundColor = "hsl(190 80% 40%)"; // turquoise
+    } else if (booking.tourType === "event") {
+      backgroundColor = "hsl(280 60% 50%)"; // purple
+    } else if (booking.status === "pending") {
+      backgroundColor = "hsl(38 92% 50%)";
+    } else {
+      backgroundColor = "hsl(210 100% 35%)"; // charter
     }
 
     return {
