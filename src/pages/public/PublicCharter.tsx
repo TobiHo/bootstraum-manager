@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { PublicLayout } from "@/components/public/PublicLayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,7 +13,18 @@ import { api } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import charterImg from "@/assets/vvv/ganzer-tag.jpg";
 
+const TOUR_LABELS: Record<string, { title: string; intro: string }> = {
+  charter:     { title: "Privates Boot chartern", intro: "Mieten Sie ein komplettes Boot exklusiv für Ihre Gruppe." },
+  punsch:      { title: "Punschfahrt anfragen",   intro: "Heißer Punsch, warme Decken – buchen Sie Ihre winterliche Vechtefahrt." },
+  ranger:      { title: "Vechte-Ranger buchen",   intro: "Die Abenteuer-Tour für Kinder und Familien – Termin direkt im Kalender wählen." },
+  sundowner:   { title: "Sundowner buchen",       intro: "Sonnenuntergang vom Wasser aus erleben – wählen Sie Ihren Wunschtermin." },
+  cliquentour: { title: "Cliquentour anfragen",   intro: "Feiern mit Freunden auf der Vechte – Termin und Boot direkt anfragen." },
+};
+
 export default function PublicCharter() {
+  const [params] = useSearchParams();
+  const type = params.get("type") || "charter";
+  const meta = TOUR_LABELS[type] || TOUR_LABELS.charter;
   const { data: boats = [] } = useQuery({ queryKey: ["boats"], queryFn: () => api.listBoats() });
 
   const [boatId, setBoatId] = useState("");
@@ -23,7 +35,7 @@ export default function PublicCharter() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [catering, setCatering] = useState(false);
-  const [notes, setNotes] = useState("");
+  const [notes, setNotes] = useState(type !== "charter" ? `Tour-Wunsch: ${meta.title}` : "");
 
   const create = useMutation({
     mutationFn: async () => {
@@ -60,11 +72,11 @@ export default function PublicCharter() {
         <img src={charterImg} alt="Privates Charterboot" width={1024} height={768} className="absolute inset-0 h-full w-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
         <div className="relative max-w-3xl mx-auto px-4 h-full flex items-end pb-6">
-          <h1 className="text-4xl md:text-5xl font-bold text-foreground drop-shadow">Privates Boot chartern</h1>
+          <h1 className="text-4xl md:text-5xl font-bold text-foreground drop-shadow">{meta.title}</h1>
         </div>
       </div>
       <section className="max-w-3xl mx-auto px-4 py-12">
-        <p className="text-muted-foreground mb-8">Mieten Sie ein komplettes Boot exklusiv für Ihre Gruppe.</p>
+        <p className="text-muted-foreground mb-8">{meta.intro}</p>
 
         <Card>
           <CardContent className="p-6 space-y-4">

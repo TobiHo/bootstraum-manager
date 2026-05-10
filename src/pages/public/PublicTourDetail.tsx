@@ -15,6 +15,9 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import publicTourImg from "@/assets/vvv/dsc00926.jpg";
 
+// Touren mit individuellem Buchungs-/Anfrageprozess (kein öffentlicher Slot-Verkauf)
+const SPECIAL_TOUR_SLUGS = new Set(["charter", "punsch", "ranger", "sundowner", "cliquentour"]);
+
 // Fallback-Tour-Typen, falls Backend nicht erreichbar ist
 const FALLBACK_TOUR_TYPES: Record<string, {
   id: string; slug: string; name: string; description: string;
@@ -67,9 +70,11 @@ export default function PublicTourDetail() {
 
   const tt = ttApi || FALLBACK_TOUR_TYPES[slug];
 
-  // Charter ist keine öffentliche Buchung – auf Charter-Seite weiterleiten
+  // Besondere Touren / Events laufen direkt über den Buchungskalender (Charter-Anfrage)
   useEffect(() => {
-    if (slug === "charter") navigate("/charter", { replace: true });
+    if (SPECIAL_TOUR_SLUGS.has(slug)) {
+      navigate(`/charter?type=${slug}`, { replace: true });
+    }
   }, [slug, navigate]);
 
   const { data: slotsApi, isError: slotsError } = useQuery({
@@ -82,6 +87,20 @@ export default function PublicTourDetail() {
   const slots = (slotsApi && slotsApi.length > 0)
     ? slotsApi
     : (tt ? buildFallbackSlots(tt.slug, tt.durationMinutes, tt.maxParticipants) : []);
+
+  const [filterFrom, setFilterFrom] = useState<string>("");
+  const [filterTo, setFilterTo] = useState<string>("");
+  const filteredSlots = slots.filter((s) => {
+    if (filterFrom) {
+      const f = new Date(filterFrom); f.setHours(0, 0, 0, 0);
+      if (s.startDate < f) return false;
+    }
+    if (filterTo) {
+      const t = new Date(filterTo); t.setHours(23, 59, 59, 999);
+      if (s.startDate > t) return false;
+    }
+    return true;
+  });
 
   const [selectedSlotId, setSelectedSlotId] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
@@ -156,13 +175,28 @@ export default function PublicTourDetail() {
         </div>
 
         <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><CalIcon className="h-5 w-5" /> Verfügbare Termine</h2>
-        {slots.length === 0 ? (
+        <Card className="mb-4">
+          <CardContent className="p-4 grid sm:grid-cols-3 gap-3 items-end">
+            <div>
+              <Label className="text-xs">Von</Label>
+              <Input type="date" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs">Bis</Label>
+              <Input type="date" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} />
+            </div>
+            <Button variant="outline" onClick={() => { setFilterFrom(""); setFilterTo(""); }}>
+              Filter zurücksetzen
+            </Button>
+          </CardContent>
+        </Card>
+        {filteredSlots.length === 0 ? (
           <Card><CardContent className="p-8 text-center text-muted-foreground">
-            Aktuell keine öffentlichen Termine. Sie können <Link to="/charter" className="text-primary underline">ein Boot privat chartern</Link>.
+            Keine Termine im gewählten Zeitraum. Sie können <Link to="/charter" className="text-primary underline">ein Boot privat chartern</Link>.
           </CardContent></Card>
         ) : (
           <div className="grid sm:grid-cols-2 gap-3 mb-8">
-            {slots.map((s) => {
+            {filteredSlots.map((s) => {
               const free = s.seatsTotal - s.seatsBooked;
               const isSelected = s.id === selectedSlotId;
               return (
