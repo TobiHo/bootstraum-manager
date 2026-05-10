@@ -1,279 +1,248 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api } from "@/lib/api";
-import { BookingData } from "@/types/booking";
-import { useToast } from "@/hooks/use-toast";
-import { calculatePrice, getDurationHours, formatPrice, TOUR_TYPES } from "@/lib/pricing";
+import { formatPrice } from "@/lib/pricing";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line, Legend,
 } from "recharts";
 
-const Reports = () => {
-  const { toast } = useToast();
-  const [bookings, setBookings] = useState<BookingData[]>([]);
-  const [loading, setLoading] = useState(true);
+const COLORS = ["#0fb5ba", "#0055CC", "#FF6B35", "#FFA502", "#2ECC71", "#9b59b6", "#e74c3c"];
 
-  useEffect(() => {
-    loadBookings();
-  }, []);
+type Filters = {
+  from?: string; to?: string;
+  boatId?: string; captainId?: string;
+  tourTypeId?: string; paymentMethod?: string;
+};
 
-  const loadBookings = async () => {
-    setLoading(true);
-    try {
-      const data = await api.listBookings();
-      setBookings(data);
-    } catch (error) {
-      toast({
-        title: "Fehler",
-        description: "Berichte konnten nicht geladen werden",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+function FilterBar({ value, onChange }: { value: Filters; onChange: (f: Filters) => void }) {
+  const { data: boats = [] } = useQuery({ queryKey: ["boats"], queryFn: () => api.listBoats() });
+  const { data: captains = [] } = useQuery({ queryKey: ["captains"], queryFn: () => api.listCaptains() });
+  const { data: tts = [] } = useQuery({ queryKey: ["tour-types"], queryFn: () => api.listTourTypes() });
+  const set = (k: keyof Filters, v: string | undefined) => onChange({ ...value, [k]: v === "all" ? undefined : v });
+  return (
+    <Card>
+      <CardContent className="p-4 grid grid-cols-1 md:grid-cols-6 gap-3">
+        <div><Label className="text-xs">Von</Label><Input type="date" value={value.from ?? ""} onChange={(e) => set("from", e.target.value || undefined)} /></div>
+        <div><Label className="text-xs">Bis</Label><Input type="date" value={value.to ?? ""} onChange={(e) => set("to", e.target.value || undefined)} /></div>
+        <div>
+          <Label className="text-xs">Boot</Label>
+          <Select value={value.boatId ?? "all"} onValueChange={(v) => set("boatId", v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent><SelectItem value="all">Alle</SelectItem>{boats.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs">Bootsführer</Label>
+          <Select value={value.captainId ?? "all"} onValueChange={(v) => set("captainId", v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent><SelectItem value="all">Alle</SelectItem>{captains.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs">Tour-Typ</Label>
+          <Select value={value.tourTypeId ?? "all"} onValueChange={(v) => set("tourTypeId", v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent><SelectItem value="all">Alle</SelectItem>{tts.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs">Zahlungsart</Label>
+          <Select value={value.paymentMethod ?? "all"} onValueChange={(v) => set("paymentMethod", v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alle</SelectItem>
+              <SelectItem value="online">Online</SelectItem>
+              <SelectItem value="onsite">Vor Ort</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function toApiParams(f: Filters) {
+  return {
+    from: f.from ? new Date(f.from) : undefined,
+    to: f.to ? new Date(f.to) : undefined,
+    boatId: f.boatId,
+    captainId: f.captainId,
+    tourTypeId: f.tourTypeId,
+    paymentMethod: f.paymentMethod,
   };
+}
 
-  // Calculate metrics
-  const now = new Date();
-  const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+function FinanceTab({ filters }: { filters: Filters }) {
+  const { data } = useQuery({ queryKey: ["report-finance", filters], queryFn: () => api.report("finance", toApiParams(filters)) });
+  if (!data) return <p className="text-muted-foreground">Lädt…</p>;
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Gesamt-Umsatz</CardTitle></CardHeader>
+          <CardContent><div className="text-3xl font-bold text-primary">{formatPrice(data.total_revenue)}</div><p className="text-xs text-muted-foreground">{data.booking_count} Buchungen</p></CardContent></Card>
+        <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Bezahlt</CardTitle></CardHeader>
+          <CardContent><div className="text-2xl font-bold">{formatPrice(data.by_payment.paid)}</div></CardContent></Card>
+        <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Vor Ort</CardTitle></CardHeader>
+          <CardContent><div className="text-2xl font-bold">{formatPrice(data.by_payment.onsite)}</div></CardContent></Card>
+        <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Offen</CardTitle></CardHeader>
+          <CardContent><div className="text-2xl font-bold">{formatPrice(data.by_payment.unpaid)}</div></CardContent></Card>
+      </div>
+      <Card><CardHeader><CardTitle>Umsatz nach Monat</CardTitle></CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={data.by_month}>
+              <CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="month" /><YAxis /><Tooltip formatter={(v: number) => formatPrice(v)} />
+              <Line dataKey="revenue" stroke="#0fb5ba" strokeWidth={2} />
+            </LineChart>
+          </ResponsiveContainer>
+        </CardContent></Card>
+      <Card><CardHeader><CardTitle>Umsatz nach Buchungsart</CardTitle></CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={250}>
+            <BarChart data={data.by_kind}>
+              <CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="kind" /><YAxis /><Tooltip formatter={(v: number) => formatPrice(v)} />
+              <Bar dataKey="revenue">{data.by_kind.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}</Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent></Card>
+    </div>
+  );
+}
 
-  const getBookingPrice = (booking: BookingData) => {
-    const durationHours = getDurationHours(booking.startDate, booking.endDate);
-    return calculatePrice(booking.tourType, booking.participants, 25, durationHours);
-  };
+function ToursTab({ filters }: { filters: Filters }) {
+  const { data } = useQuery({ queryKey: ["report-tours", filters], queryFn: () => api.report("tours", toApiParams(filters)) });
+  if (!data) return <p className="text-muted-foreground">Lädt…</p>;
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Geplante Termine</CardTitle></CardHeader>
+          <CardContent><div className="text-3xl font-bold">{data.public_tours_total}</div><p className="text-xs text-muted-foreground">{data.public_tours_cancelled} abgesagt</p></CardContent></Card>
+        <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Plätze gesamt</CardTitle></CardHeader>
+          <CardContent><div className="text-3xl font-bold">{data.seats_total}</div></CardContent></Card>
+        <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Plätze gebucht</CardTitle></CardHeader>
+          <CardContent><div className="text-3xl font-bold">{data.seats_booked}</div></CardContent></Card>
+        <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Sitz-Auslastung</CardTitle></CardHeader>
+          <CardContent><div className="text-3xl font-bold text-primary">{data.seat_utilization_pct}%</div></CardContent></Card>
+      </div>
+      <Card><CardHeader><CardTitle>Umsatz nach Tour-Typ</CardTitle></CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={data.by_type}>
+              <CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" /><YAxis /><Tooltip formatter={(v: number) => formatPrice(v)} />
+              <Bar dataKey="revenue">{data.by_type.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}</Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent></Card>
+      <Card><CardHeader><CardTitle>Top-Touren</CardTitle></CardHeader>
+        <CardContent>
+          <Table><TableHeader><TableRow><TableHead>Tour</TableHead><TableHead>Buchungen</TableHead><TableHead>Tickets</TableHead><TableHead>Umsatz</TableHead></TableRow></TableHeader>
+            <TableBody>{data.by_type.map((r: any) => (
+              <TableRow key={r.name}><TableCell>{r.name}</TableCell><TableCell>{r.bookings}</TableCell><TableCell>{r.tickets}</TableCell><TableCell>{formatPrice(r.revenue)}</TableCell></TableRow>
+            ))}</TableBody></Table>
+        </CardContent></Card>
+    </div>
+  );
+}
 
-  const thisMonthBookings = bookings.filter(b => {
-    const bookingDate = new Date(b.startDate);
-    return b.status === "confirmed" && bookingDate >= currentMonth && bookingDate < nextMonth;
-  });
+function CaptainsTab({ filters }: { filters: Filters }) {
+  const { data } = useQuery({ queryKey: ["report-captains", filters], queryFn: () => api.report("captains", toApiParams(filters)) });
+  if (!data) return <p className="text-muted-foreground">Lädt…</p>;
+  return (
+    <div className="space-y-6">
+      <Card><CardHeader><CardTitle>Einsätze pro Bootsführer</CardTitle></CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={data.rows.slice(0, 12)}>
+              <CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" interval={0} angle={-25} textAnchor="end" height={80} /><YAxis /><Tooltip /><Legend />
+              <Bar dataKey="bookings" stackId="a" fill="#0055CC" name="Charter" />
+              <Bar dataKey="public_tours" stackId="a" fill="#0fb5ba" name="Öffentliche Touren" />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent></Card>
+      <Card><CardHeader><CardTitle>Detailauswertung</CardTitle></CardHeader>
+        <CardContent>
+          <Table><TableHeader><TableRow><TableHead>Bootsführer</TableHead><TableHead>Charter</TableHead><TableHead>Öff. Touren</TableHead><TableHead>Stunden</TableHead><TableHead>Abwesenheiten</TableHead></TableRow></TableHeader>
+            <TableBody>{data.rows.map((r: any) => (
+              <TableRow key={r.captain_id}><TableCell>{r.name}</TableCell><TableCell>{r.bookings}</TableCell><TableCell>{r.public_tours}</TableCell><TableCell>{r.hours.toFixed(1)} h</TableCell><TableCell>{r.absences}</TableCell></TableRow>
+            ))}</TableBody></Table>
+        </CardContent></Card>
+    </div>
+  );
+}
 
-  const lastMonthBookings = bookings.filter(b => {
-    const bookingDate = new Date(b.startDate);
-    return b.status === "confirmed" && bookingDate >= lastMonth && bookingDate < currentMonth;
-  });
+function BoatsTab({ filters }: { filters: Filters }) {
+  const { data } = useQuery({ queryKey: ["report-boats", filters], queryFn: () => api.report("boats", toApiParams(filters)) });
+  if (!data) return <p className="text-muted-foreground">Lädt…</p>;
+  return (
+    <div className="space-y-6">
+      <Card><CardHeader><CardTitle>Sitz-Auslastung pro Boot</CardTitle></CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={data.rows}>
+              <CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" /><YAxis unit="%" /><Tooltip />
+              <Bar dataKey="seat_utilization_pct" name="Auslastung %">{data.rows.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}</Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent></Card>
+      <Card><CardHeader><CardTitle>Detailauswertung</CardTitle></CardHeader>
+        <CardContent>
+          <Table><TableHeader><TableRow><TableHead>Boot</TableHead><TableHead>Kapazität</TableHead><TableHead>Charter</TableHead><TableHead>Öff. Touren</TableHead><TableHead>Plätze gebucht</TableHead><TableHead>Auslastung</TableHead><TableHead>Stunden</TableHead></TableRow></TableHeader>
+            <TableBody>{data.rows.map((r: any) => (
+              <TableRow key={r.boat_id}><TableCell>{r.name}</TableCell><TableCell>{r.capacity}</TableCell><TableCell>{r.bookings}</TableCell><TableCell>{r.public_tours_active}</TableCell><TableCell>{r.seats_booked}/{r.seats_total}</TableCell><TableCell>{r.seat_utilization_pct}%</TableCell><TableCell>{r.hours.toFixed(1)} h</TableCell></TableRow>
+            ))}</TableBody></Table>
+        </CardContent></Card>
+    </div>
+  );
+}
 
-  const thisMonthRevenue = thisMonthBookings.reduce((sum, b) => sum + getBookingPrice(b), 0);
-  const lastMonthRevenue = lastMonthBookings.reduce((sum, b) => sum + getBookingPrice(b), 0);
-  const avgBookingValue = thisMonthBookings.length > 0 ? thisMonthRevenue / thisMonthBookings.length : 0;
+function CustomersTab({ filters }: { filters: Filters }) {
+  const { data } = useQuery({ queryKey: ["report-customers", filters], queryFn: () => api.report("customers", toApiParams(filters)) });
+  if (!data) return <p className="text-muted-foreground">Lädt…</p>;
+  return (
+    <div className="space-y-6">
+      <Card><CardHeader><CardTitle>Top-Kunden ({data.total_customers} insgesamt)</CardTitle></CardHeader>
+        <CardContent>
+          <Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>E-Mail</TableHead><TableHead>Buchungen</TableHead><TableHead>Umsatz</TableHead></TableRow></TableHeader>
+            <TableBody>{data.rows.map((r: any) => (
+              <TableRow key={r.email}><TableCell>{r.name}</TableCell><TableCell className="text-muted-foreground text-xs">{r.email}</TableCell><TableCell>{r.bookings}</TableCell><TableCell>{formatPrice(r.revenue)}</TableCell></TableRow>
+            ))}</TableBody></Table>
+        </CardContent></Card>
+    </div>
+  );
+}
 
-  // Revenue by tour type
-  const revenueByTourType: { name: string; revenue: number }[] = [];
-  const tourTypeCounts: { [key: string]: number } = {};
-
-  thisMonthBookings.forEach(booking => {
-    const tourType = booking.tourType || "Ohne Typ";
-    const price = getBookingPrice(booking);
-    const existing = revenueByTourType.find(r => r.name === tourType);
-    if (existing) {
-      existing.revenue += price;
-    } else {
-      revenueByTourType.push({ name: tourType, revenue: price });
-    }
-    tourTypeCounts[tourType] = (tourTypeCounts[tourType] || 0) + 1;
-  });
-
-  const COLORS = ["#0055CC", "#FF6B35", "#FFA502", "#F7931E", "#2ECC71", "#3498DB"];
-
-  // Recent bookings (last 10)
-  const recentBookings = [...bookings]
-    .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
-    .slice(0, 10);
-
-  const getStatusBadgeColor = (status: string) => {
-    switch (status) {
-      case "confirmed":
-        return "bg-green-100 text-green-800";
-      case "pending":
-        return "bg-yellow-100 text-yellow-800";
-      case "cancelled":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "confirmed":
-        return "Bestätigt";
-      case "pending":
-        return "Ausstehend";
-      case "cancelled":
-        return "Storniert";
-      default:
-        return status;
-    }
-  };
-
-  const getTourTypeLabel = (tourType: string | undefined) => {
-    if (!tourType) return "Ohne Typ";
-    const tourTypeObj = TOUR_TYPES.find(t => t.value === tourType);
-    return tourTypeObj ? tourTypeObj.label : tourType;
-  };
-
+export default function Reports() {
+  const [filters, setFilters] = useState<Filters>({});
   return (
     <AppLayout>
-      <div className="container mx-auto px-4 py-8">
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Berichte</h1>
-            <p className="text-muted-foreground mt-1">Übersicht über Buchungen und Umsatz</p>
-          </div>
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Umsatz diesen Monat
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-primary">{formatPrice(thisMonthRevenue)}</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {thisMonthBookings.length} Buchungen
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Umsatz letzter Monat
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-foreground">{formatPrice(lastMonthRevenue)}</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {lastMonthBookings.length} Buchungen
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Ø Buchungswert
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-foreground">{formatPrice(avgBookingValue)}</div>
-                <p className="text-xs text-muted-foreground mt-1">Diesen Monat</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Revenue by Tour Type Chart */}
-          {revenueByTourType.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Umsatz nach Tourtyp (diesen Monat)</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={revenueByTourType}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip formatter={(value) => formatPrice(value as number)} />
-                    <Bar dataKey="revenue" fill="#0055CC">
-                      {revenueByTourType.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Recent Bookings Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Aktuelle Buchungen (letzte 10)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <p className="text-center text-muted-foreground">Wird geladen...</p>
-              ) : recentBookings.length === 0 ? (
-                <p className="text-center text-muted-foreground">Keine Buchungen vorhanden</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Datum</TableHead>
-                        <TableHead>Tourtyp</TableHead>
-                        <TableHead>Kunde</TableHead>
-                        <TableHead>Teilnehmer</TableHead>
-                        <TableHead>Preis</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {recentBookings.map((booking) => (
-                        <TableRow key={booking.id}>
-                          <TableCell className="text-sm">
-                            {new Date(booking.startDate).toLocaleDateString("de-DE", {
-                              weekday: "short",
-                              year: "numeric",
-                              month: "2-digit",
-                              day: "2-digit",
-                            })}
-                            <br />
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(booking.startDate).toLocaleTimeString("de-DE", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {getTourTypeLabel(booking.tourType)}
-                          </TableCell>
-                          <TableCell className="text-sm font-medium">
-                            {booking.customer.name}
-                          </TableCell>
-                          <TableCell className="text-sm">{booking.participants}</TableCell>
-                          <TableCell className="text-sm font-semibold text-primary">
-                            {formatPrice(getBookingPrice(booking))}
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={getStatusBadgeColor(booking.status)}>
-                              {getStatusLabel(booking.status)}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+      <div className="container mx-auto px-4 py-8 space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">Berichte</h1>
+          <p className="text-muted-foreground">Auswertungen und KPIs zu Finanzen, Touren, Personal und Booten.</p>
         </div>
+        <FilterBar value={filters} onChange={setFilters} />
+        <Tabs defaultValue="finance">
+          <TabsList>
+            <TabsTrigger value="finance">Finanzen</TabsTrigger>
+            <TabsTrigger value="tours">Touren / Events</TabsTrigger>
+            <TabsTrigger value="captains">Personal</TabsTrigger>
+            <TabsTrigger value="boats">Boote</TabsTrigger>
+            <TabsTrigger value="customers">Kunden</TabsTrigger>
+          </TabsList>
+          <TabsContent value="finance" className="mt-6"><FinanceTab filters={filters} /></TabsContent>
+          <TabsContent value="tours" className="mt-6"><ToursTab filters={filters} /></TabsContent>
+          <TabsContent value="captains" className="mt-6"><CaptainsTab filters={filters} /></TabsContent>
+          <TabsContent value="boats" className="mt-6"><BoatsTab filters={filters} /></TabsContent>
+          <TabsContent value="customers" className="mt-6"><CustomersTab filters={filters} /></TabsContent>
+        </Tabs>
       </div>
     </AppLayout>
   );
-};
-
-export default Reports;
+}
