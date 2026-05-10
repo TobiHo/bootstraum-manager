@@ -130,7 +130,7 @@ def buy_tickets(
         catering=payload.catering,
         booking_kind="public",
         total_price=total,
-        payment_status="unpaid",
+        payment_status=("pay_on_site" if payload.payment_method == "onsite" else "unpaid"),
         public_tour_id=pt.id,
     )
     db.add(booking)

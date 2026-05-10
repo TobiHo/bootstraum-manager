@@ -57,7 +57,7 @@ def create_public_charter(payload: CharterRequest, db: Session = Depends(get_db)
         catering=payload.catering,
         booking_kind="charter",
         total_price=_charter_price(boat.capacity, payload.start_date, payload.end_date),
-        payment_status="unpaid",
+        payment_status=("pay_on_site" if payload.payment_method == "onsite" else "unpaid"),
     )
     db.add(booking)
     db.commit()
