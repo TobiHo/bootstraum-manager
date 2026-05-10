@@ -5,8 +5,6 @@ import { cn } from "@/lib/utils";
 
 const nav = [
   { name: "Start", href: "/" },
-  { name: "Touren", href: "/touren" },
-  { name: "Charter buchen", href: "/charter" },
   { name: "Kontakt", href: "/kontakt" },
 ];
 
@@ -59,7 +57,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
               <span className="text-[10px] mt-0.5">Karte</span>
             </button>
             <Link
-              to="/touren"
+              to="/#touren"
               className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-5 py-3 text-sm uppercase tracking-wide"
             >
               Buchen
