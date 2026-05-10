@@ -113,10 +113,15 @@ export function BookingCalendar() {
   }, []);
 
   const handleSelectEvent = useCallback((event: CalendarEvent) => {
+    if (typeof event.id === "string" && event.id.startsWith("pt-")) {
+      // Public tour: navigate handled separately; for now just show toast
+      toast({ title: event.title, description: "Öffentlicher Termin – Bearbeitung im Bereich „Öffentl. Termine" / „Events"." });
+      return;
+    }
     setSelectedEvent(event);
     setSelectedSlot(null);
     setIsModalOpen(true);
-  }, []);
+  }, [toast]);
 
   const handleSaveBooking = useCallback(async (bookingData: Omit<BookingData, 'id' | 'createdAt'>) => {
     try {
