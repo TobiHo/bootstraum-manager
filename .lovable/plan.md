@@ -1,81 +1,86 @@
-# Plan: Webshop & erweiterte Verwaltung
 
-Aufbau eines öffentlichen Buchungs-Webshops (Vorbild: giethoorntickets.nl) auf Basis des bestehenden Stacks (FastAPI-Backend + React/Vite-Frontend), inkl. Rollensystem, automatischer Bootsführer-Zuordnung, Abwesenheitsverwaltung und Paddle-Bezahlung.
+# Admin-Erweiterungen
 
-## 1. Backend-Erweiterungen (FastAPI)
+Ziel: Admin/Backoffice bekommt saubere, getrennte Verwaltungs­ansichten für öffentliche Rundfahrten und Events, vollständige Editier­barkeit, Serien­termine, einen funktionierenden Kalender und deutlich erweiterte Berichte.
 
-### Rollen
-- `UserRole` erweitern: `ADMIN`, `STAFF`, `CAPTAIN`, `CUSTOMER`
-- Captain-Konto an `User` koppeln (`captain.user_id` FK, optional)
-- Route-Guards in `middleware/auth.py`: `require_admin`, `require_staff`, `require_captain`, `require_customer_or_above`
+## 1. Öffentliche Termine aufteilen
 
-### Neue Modelle / Tabellen
-- `tour_type`: Stammdaten für öffentliche Fahrten (Name, Dauer, Beschreibung, Preis pro Ticket, min/max Personen, Bild)
-- `public_tour` (Slot): `tour_type_id`, `start_date`, `end_date`, `boat_id`, `captain_id?`, `seats_total`, `seats_booked`, `status`
-- `ticket`: `public_tour_id`, `booking_id`, `quantity`, `price_total`
-- `captain_absence`: `captain_id`, `start_date`, `end_date`, `reason` (`vacation`/`permanent`/`sick`), `recurring` (z.B. "jeden Mo")
-- `payment`: `booking_id`, `provider` (`paddle`), `paddle_transaction_id`, `status`, `amount`, `currency`
-- `booking` erweitern: `type` (`charter`|`public`), `total_price`, `payment_status`
+- Reiter "Öffentliche Termine" zeigt **nur** Rundfahrten (Tour-Typ-Kategorie `rundfahrt`).
+- Neuer Reiter "Events / Sondertouren" für alle übrigen Tour-Typen (Cliquentouren, Themen­fahrten, …).
+- In beiden Listen statt `captainId` und `boatId` die **Namen** anzeigen.
+- Beide Listen oben mit Filtern: Zeitraum (von/bis), Boot, Bootsführer, Tour-Typ, Status.
+- Jeder Termin bearbeitbar (Boot, Bootsführer, Start/Ende, Plätze, Status) per Edit-Dialog. Auto-Zuweisung des Bootsführers bleibt Default, ist aber überschreibbar.
 
-### Neue Endpoints
-- `GET/POST/PUT/DELETE /api/tour-types` (Admin/Staff)
-- `GET /api/public-tours?from&to` (öffentlich) – verfügbare Slots
-- `POST /api/public-tours` (Admin) – Slot anlegen, automatische Bootsführer-Zuordnung
-- `POST /api/public-tours/{id}/tickets` (öffentlich/Kunde) – Tickets buchen
-- `POST /api/bookings/charter` (öffentlich/Kunde) – private Charter-Anfrage
-- `GET/POST/DELETE /api/captains/{id}/absences` (Captain für sich, Admin für alle)
-- `POST /api/payments/paddle/checkout` – Checkout-Session erstellen
-- `POST /api/payments/paddle/webhook` – Zahlungsstatus aktualisieren
+## 2. Serientermine
 
-### Auto-Zuordnung Bootsführer
-Service `captain_assignment_service.assign(boat_id, start, end)`:
-1. Kandidaten = Captains mit `boat_id` in `available_boats`
-2. Filter: keine Überschneidung mit `booking` oder `captain_absence`
-3. Sortiere nach Zahl der Bookings im aktuellen Monat (gleichverteilt)
-4. Gib ersten zurück; nichts gefunden → `null` (Slot bleibt unzugeordnet, Admin-Hinweis)
-Aufruf bei Slot-Erstellung und bei Charter-Bestätigung.
+- Im "Neuer Termin"-Dialog Option "Serie" mit:
+  - Wiederholung: täglich / wöchentlich (gewählte Wochentage).
+  - Anzahl Termine pro Tag (z. B. 2 für Sommer, 1 für Übergang).
+  - Zeitraum von/bis.
+  - Uhrzeiten je Termin.
+- Backend bekommt Endpoint `POST /public-tours/series`, der die Einzeltermine erzeugt und Bootsführer pro Termin zuweist.
+- Einzeltermine können **abgesagt** werden mit Pflichtfeld "Begründung" (z. B. Wetter). In Listen und Kalender als "Abgesagt – {Grund}" rot markiert.
 
-## 2. Frontend – öffentlicher Webshop
+## 3. Kalender
 
-Neue Routes (öffentlich, kein Login nötig; Login optional für „Meine Buchungen"):
-- `/` – Landingpage im VVV-Nordhorn-CD: Hero, USPs, Touren-Highlights, CTA
-- `/touren` – Übersicht aller Tour-Typen (Karten-Grid mit Bild, Preis, Dauer)
-- `/touren/:slug` – Detail + Termin-/Slot-Auswahl + Ticket-Anzahl + Checkout
-- `/charter` – Formular für private Komplett-Buchung (analog aktuelles Modal, aber öffentlich)
-- `/checkout/erfolg` und `/checkout/abbruch`
-- `/meine-buchungen` – Kunde sieht eigene Buchungen (Login)
+- Aktuell zeigt der Kalender nur private Buchungen. Erweitern, sodass auch alle öffentlichen Touren (Rundfahrten + Events) als Events erscheinen, farblich unterschieden:
+  - Privatcharter, Rundfahrt, Event, Abgesagt.
+- Titel zeigt Tour-Typ, Boot-Name, Auslastung (z. B. "Rundfahrt · Vechtesonne · 12/20").
+- Klick öffnet die passende Detail/Edit-Ansicht.
 
-Komponenten: `PublicLayout` (eigene Navi/Footer im Nordhorn-CD), `TourCard`, `SlotPicker`, `TicketCounter`, `CheckoutSummary`.
+## 4. Berichte mit Unterseiten
 
-## 3. Frontend – interner Bereich (bestehend erweitern)
+Neue Tab-Struktur unter `/reports`:
 
-- `AppLayout` Navigation rollenbasiert
-- `/admin/tour-types` neue Stammdaten-Seite (CRUD)
-- `/admin/public-tours` Kalender zum Anlegen/Pflegen öffentlicher Slots, zeigt Buchungsstand
-- `/captain/abwesenheiten` Captain-Self-Service (Urlaub eintragen, dauerhafte Sperrtage)
-- `/admin/captains` zeigt zusätzlich Abwesenheiten + Auslastung
-- Bestehender Buchungskalender bleibt für Charter, zeigt jetzt auch öffentliche Slots farblich getrennt
+1. **Finanzen** (bestehende Kostensicht erweitert)
+   - Umsatz nach Zeitraum, Tour-Typ, Boot, Zahlungsart (online vs. vor Ort).
+   - Kosten vs. Umsatz, Deckungsbeitrag.
+2. **Events / Touren**
+   - Welcher Tour-Typ wie oft gebucht, Auslastung %, Umsatz, Stornoquote.
+   - Top-Events Ranking.
+3. **Personal (Bootsführer)**
+   - Anzahl Einsätze pro Bootsführer, Stunden, Auslastung, Abwesenheiten.
+4. **Boote**
+   - Einsätze pro Boot, Auslastung (gefahrene vs. mögliche Slots), Sitz­auslastung Ø, Wartung/Verfügbarkeit.
+5. **Kunden** (optional, sinnvoll)
+   - Wiederkehrende Kunden, Top-Kunden nach Umsatz.
 
-## 4. Paddle-Integration
+Alle Unterseiten mit dynamischen Filtern: Zeitraum, Boot, Bootsführer, Tour-Typ, Zahlungsart.
 
-- `payments--enable_paddle_payments` (eligibility check zuerst via `recommend_payment_provider`)
-- Tour-Typen → Paddle Products + Prices via `batch_create_product` (1 Price pro Tour-Typ; Charter als Custom Price)
-- Checkout: Webshop ruft `/api/payments/paddle/checkout` → Paddle Checkout-Overlay → Webhook bestätigt → Buchung auf `confirmed`
+## Technische Details
 
-## 5. Corporate Design
+### Backend (`bootstrap-manager-backend/`)
 
-Bestehende Tokens in `index.css`/`tailwind.config.ts` an vvv-nordhorn.de anpassen (Blau/Weiß, klare Sans-Serif, Bilder von Wasser/Booten). Eigenes `PublicLayout` mit Top-Bar, Hauptnavi, Footer mit Kontakt/Impressum-Stub.
+- `models/db.py` / `schemas.py`:
+  - `TourType` bekommt Feld `category: "rundfahrt" | "event"`.
+  - `PublicTour` bekommt `cancellation_reason: str | None`, Status-Enum erweitert um `cancelled_weather` o. ä. (oder einfach `status=cancelled` + reason).
+- Routen `public_tours.py`:
+  - `GET /public-tours` mit Query-Filtern `from`, `to`, `boat_id`, `captain_id`, `tour_type_id`, `category`, `status`.
+  - `PATCH /public-tours/{id}` für Editieren (Boot, Captain, Zeiten, Plätze).
+  - `POST /public-tours/{id}/cancel` mit `reason`.
+  - `POST /public-tours/series` für Serien­anlage.
+- Neue Aggregations-Endpoints unter `routes/reports.py`:
+  - `/reports/finance`, `/reports/tours`, `/reports/captains`, `/reports/boats`, `/reports/customers` mit gleichen Filtern.
 
-## 6. Reihenfolge der Umsetzung
+### Frontend (`src/`)
 
-1. Backend: User-Rolle CAPTAIN, Modelle (tour_type, public_tour, ticket, captain_absence, payment), Migrationen
-2. Backend: Auto-Zuordnungs-Service + Endpoints
-3. Frontend intern: tour-types CRUD, public-tours Verwaltung, Captain-Abwesenheiten
-4. Frontend öffentlich: PublicLayout + Landing + Touren-Übersicht + Detail/Slot-Buchung + Charter-Formular
-5. Paddle aktivieren, Produkte anlegen, Checkout + Webhook verdrahten
-6. CD-Feinschliff, Smoke-Test
+- `pages/admin/PublicTours.tsx` → split in
+  - `pages/admin/PublicTours.tsx` (Rundfahrten),
+  - `pages/admin/PublicEvents.tsx` (Events),
+  - geteilte Komponente `components/admin/PublicTourTable.tsx` mit Filterleiste, Edit-Dialog, Cancel-Dialog, Serien-Dialog.
+- Navigation um Eintrag "Events" ergänzen.
+- `lib/api.ts`: neue Methoden `updatePublicTour`, `cancelPublicTourWithReason`, `createPublicTourSeries`, Reports-Endpoints.
+- `components/calendar/BookingCalendar.tsx`: zusätzlich `api.listPublicTours()` laden und in Events mappen, Farbcodes pro Typ.
+- `pages/Reports.tsx` → Tabs (Finanzen / Events / Personal / Boote / Kunden), jede Tab-Komponente mit Filterleiste + Charts/Tabellen (recharts ist bereits vorhanden).
 
-## Hinweise
-- Großes Vorhaben – Umsetzung in mehreren Schritten, nach Punkt 1+2 erste Sichtprüfung empfohlen.
-- Paddle-Aktivierung erfordert eine separate Bestätigung von dir im Lovable-UI.
-- Bestehende SQLite-Tests werden für neue Modelle ergänzt.
+## Reihenfolge der Umsetzung
+
+1. Backend-Schema + Endpoints (Filter, Patch, Cancel, Series, Reports).
+2. Frontend Admin-Tour-Verwaltung (Split, Filter, Edit, Cancel, Serie, Namen statt IDs).
+3. Kalender mit allen Terminen.
+4. Berichte mit Unterseiten und Filtern.
+5. Navigation / Routing aufräumen.
+
+## Offene Frage
+
+Soll ich **alle 5 Bereiche** in einem Rutsch umsetzen (großer Patch), oder bevorzugst du, dass ich Schritt 1+2 (Admin-Touren/Events inkl. Serie & Cancel) zuerst liefere und Kalender + Berichte danach in einer zweiten Runde? Bei "alles auf einmal" wird die Antwort entsprechend groß und braucht länger pro Iteration.

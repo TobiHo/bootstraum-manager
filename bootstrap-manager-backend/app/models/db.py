@@ -171,6 +171,7 @@ class TourType(Base):
     max_participants = Column(Integer, default=50, nullable=False)
     image_url = Column(String(500))
     active = Column(Boolean, default=True, nullable=False)
+    category = Column(String(20), default="rundfahrt", nullable=False, index=True)  # rundfahrt | event
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
@@ -191,6 +192,7 @@ class PublicTour(Base):
     seats_total = Column(Integer, nullable=False)
     seats_booked = Column(Integer, default=0, nullable=False)
     status = Column(String(20), default="scheduled", nullable=False)  # scheduled | cancelled | completed
+    cancellation_reason = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

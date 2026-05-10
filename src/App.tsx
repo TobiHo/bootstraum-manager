@@ -14,6 +14,7 @@ import PublicContact from "./pages/public/PublicContact";
 import { CheckoutSuccess, CheckoutCancel } from "./pages/public/CheckoutResult";
 import AdminTourTypes from "./pages/admin/TourTypes";
 import AdminPublicTours from "./pages/admin/PublicTours";
+import AdminPublicEvents from "./pages/admin/PublicEvents";
 import MyAbsences from "./pages/captain/MyAbsences";
 import Boats from "./pages/Boats";
 import Captains from "./pages/Captains";
@@ -48,6 +49,7 @@ const App = () => (
             <Route path="/admin/captains" element={<ProtectedRoute><Captains /></ProtectedRoute>} />
             <Route path="/admin/tour-types" element={<ProtectedRoute><AdminTourTypes /></ProtectedRoute>} />
             <Route path="/admin/public-tours" element={<ProtectedRoute><AdminPublicTours /></ProtectedRoute>} />
+            <Route path="/admin/public-events" element={<ProtectedRoute><AdminPublicEvents /></ProtectedRoute>} />
             <Route path="/admin/users" element={<ProtectedRoute requireAdmin><Users /></ProtectedRoute>} />
             <Route path="/admin/reports" element={<ProtectedRoute requireAdmin><Reports /></ProtectedRoute>} />
             <Route path="/captain/abwesenheiten" element={<ProtectedRoute><MyAbsences /></ProtectedRoute>} />

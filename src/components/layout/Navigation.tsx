@@ -14,7 +14,7 @@ import {
   Settings,
   BarChart3
 } from "lucide-react";
-import { Anchor, CalendarClock, CalendarOff } from "lucide-react";
+import { Anchor, CalendarClock, CalendarOff, Sparkles } from "lucide-react";
 
 const navigation = [
   { name: "Kalender", href: "/admin", icon: Calendar },
@@ -22,6 +22,7 @@ const navigation = [
   { name: "Bootsführer", href: "/admin/captains", icon: Users },
   { name: "Tour-Typen", href: "/admin/tour-types", icon: Anchor },
   { name: "Öffentl. Termine", href: "/admin/public-tours", icon: CalendarClock },
+  { name: "Events", href: "/admin/public-events", icon: Sparkles },
 ];
 
 const adminNavigation = [
