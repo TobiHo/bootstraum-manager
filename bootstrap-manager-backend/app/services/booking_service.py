@@ -99,9 +99,10 @@ class BookingService:
             customer_phone=booking_in.customer_phone,
             tour_type=booking_in.tour_type,
             notes=booking_in.notes,
-            status=BookingStatus.PENDING,
+            status=getattr(booking_in, "status", None) or BookingStatus.PENDING,
             catering=getattr(booking_in, "catering", False),
             booking_kind=getattr(booking_in, "booking_kind", "charter"),
+            payment_status=getattr(booking_in, "payment_status", "unpaid"),
         )
 
         created_booking = self.repo.create(booking)
@@ -269,6 +270,12 @@ class BookingService:
 
         if booking_update.notes is not None:
             booking.notes = booking_update.notes
+
+        if getattr(booking_update, "catering", None) is not None:
+            booking.catering = booking_update.catering
+
+        if getattr(booking_update, "payment_status", None):
+            booking.payment_status = booking_update.payment_status
 
         updated_booking = self.repo.update(booking)
         return BookingResponse.from_orm(updated_booking)

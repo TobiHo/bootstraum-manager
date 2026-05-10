@@ -108,6 +108,7 @@ const toBooking = (booking: ApiBooking): BookingData => ({
   notes: booking.notes ?? "",
   tourType: booking.tour_type ?? undefined,
   status: booking.status,
+  paymentStatus: (booking as any).payment_status ?? "unpaid",
   createdAt: new Date(booking.created_at),
 });
 
@@ -138,6 +139,8 @@ const bookingPayload = (booking: Omit<BookingData, "id" | "createdAt">) => ({
   tour_type: booking.tourType || null,
   notes: booking.notes,
   status: booking.status,
+  catering: booking.catering,
+  payment_status: booking.paymentStatus ?? "unpaid",
 });
 
 async function assignCaptainBoats(captainId: string, boatIds: string[]) {

@@ -187,6 +187,8 @@ class BookingCreate(BaseModel):
     notes: Optional[str] = Field(None, max_length=1000)
     catering: bool = False
     booking_kind: str = Field("charter", pattern="^(charter|public)$")
+    payment_status: str = Field("unpaid", pattern="^(unpaid|paid|pay_on_site|refunded)$")
+    status: Optional[BookingStatus] = None
 
 
 class BookingUpdate(BaseModel):
@@ -203,6 +205,8 @@ class BookingUpdate(BaseModel):
     tour_type: Optional[str] = Field(None, max_length=50)
     status: Optional[BookingStatus] = None
     notes: Optional[str] = Field(None, max_length=1000)
+    catering: Optional[bool] = None
+    payment_status: Optional[str] = Field(None, pattern="^(unpaid|paid|pay_on_site|refunded)$")
 
 
 class BookingResponse(BaseModel):
