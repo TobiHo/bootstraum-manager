@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { api } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
-import charterImg from "@/assets/charter.jpg";
+import charterImg from "@/assets/vvv/ganzer-tag.jpg";
 
 export default function PublicCharter() {
   const { data: boats = [] } = useQuery({ queryKey: ["boats"], queryFn: () => api.listBoats() });
