@@ -23,6 +23,7 @@ const empty: Omit<TourType, "id"> = {
   maxParticipants: 25,
   imageUrl: "",
   active: true,
+  category: "rundfahrt",
 };
 
 export default function AdminTourTypes() {
@@ -66,6 +67,15 @@ export default function AdminTourTypes() {
                   <div><Label>Max. Teilnehmer</Label><Input type="number" value={form.maxParticipants} onChange={(e) => setForm({ ...form, maxParticipants: Number(e.target.value) })} /></div>
                 </div>
                 <div><Label>Bild-URL</Label><Input value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} /></div>
+                <div>
+                  <Label>Kategorie</Label>
+                  <select className="w-full h-10 border rounded-md px-2 bg-background"
+                    value={form.category ?? "rundfahrt"}
+                    onChange={(e) => setForm({ ...form, category: e.target.value as "rundfahrt" | "event" })}>
+                    <option value="rundfahrt">Rundfahrt (öffentlicher Termin)</option>
+                    <option value="event">Event / Sondertour</option>
+                  </select>
+                </div>
                 <div className="flex items-center gap-2"><Switch checked={form.active} onCheckedChange={(v) => setForm({ ...form, active: v })} /><Label>Aktiv (im Webshop sichtbar)</Label></div>
                 <Button onClick={() => save.mutate()} className="w-full">Speichern</Button>
               </div>
