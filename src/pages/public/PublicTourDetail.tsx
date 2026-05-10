@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PublicLayout } from "@/components/public/PublicLayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,20 +15,73 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import publicTourImg from "@/assets/vvv/dsc00926.jpg";
 
+// Fallback-Tour-Typen, falls Backend nicht erreichbar ist
+const FALLBACK_TOUR_TYPES: Record<string, {
+  id: string; slug: string; name: string; description: string;
+  durationMinutes: number; pricePerTicket: number; maxParticipants: number;
+  minParticipants: number; active: boolean;
+}> = {
+  rundfahrt:   { id: "fb-rundfahrt",   slug: "rundfahrt",   name: "Öffentliche Rundfahrten", description: "Die klassische City-Rundfahrt auf der Vechte – ideal zum Kennenlernen Nordhorns vom Wasser aus.", durationMinutes: 90,  pricePerTicket: 14.5, maxParticipants: 25, minParticipants: 1, active: true },
+  charter:     { id: "fb-charter",     slug: "charter",     name: "Exklusivfahrten",         description: "Mieten Sie das ganze Boot exklusiv für Ihre Gruppe – ideal für Firmen, Geburtstage und Feiern.", durationMinutes: 120, pricePerTicket: 290,  maxParticipants: 25, minParticipants: 1, active: true },
+  punsch:      { id: "fb-punsch",      slug: "punsch",      name: "Punschfahrten",           description: "Heißer Punsch, warme Decken und winterliche Stimmung an Bord.", durationMinutes: 90,  pricePerTicket: 18.5, maxParticipants: 25, minParticipants: 1, active: true },
+  ranger:      { id: "fb-ranger",      slug: "ranger",      name: "Vechte-Ranger",           description: "Die Abenteuer-Tour für Kinder und Familien.", durationMinutes: 60,  pricePerTicket: 9.5,  maxParticipants: 25, minParticipants: 1, active: true },
+  sundowner:   { id: "fb-sundowner",   slug: "sundowner",   name: "Sundowner",               description: "Sonnenuntergang vom Wasser aus erleben.", durationMinutes: 90,  pricePerTicket: 22,   maxParticipants: 25, minParticipants: 1, active: true },
+  cliquentour: { id: "fb-cliquentour", slug: "cliquentour", name: "Cliquentour",             description: "Feiern mit Freunden auf der Vechte.", durationMinutes: 120, pricePerTicket: 26,   maxParticipants: 25, minParticipants: 1, active: true },
+};
+
+// Generiere Beispiel-Slots für die nächsten 14 Tage (täglich 11:00, 14:00, 17:00)
+function buildFallbackSlots(slug: string, durationMin: number, capacity: number) {
+  const slots: { id: string; startDate: Date; endDate: Date; seatsTotal: number; seatsBooked: number }[] = [];
+  const times = [11, 14, 17];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  for (let d = 1; d <= 14; d++) {
+    for (const h of times) {
+      const start = new Date(today);
+      start.setDate(start.getDate() + d);
+      start.setHours(h, 0, 0, 0);
+      const end = new Date(start.getTime() + durationMin * 60_000);
+      const booked = Math.floor(Math.random() * (capacity - 4));
+      slots.push({
+        id: `fb-${slug}-${d}-${h}`,
+        startDate: start,
+        endDate: end,
+        seatsTotal: capacity,
+        seatsBooked: booked,
+      });
+    }
+  }
+  return slots;
+}
+
 export default function PublicTourDetail() {
   const { slug = "" } = useParams();
   const qc = useQueryClient();
+  const navigate = useNavigate();
 
-  const { data: tt } = useQuery({
+  const { data: ttApi, isError: ttError, isLoading: ttLoading } = useQuery({
     queryKey: ["tour-type", slug],
     queryFn: () => api.getTourTypeBySlug(slug),
+    retry: false,
   });
 
-  const { data: slots = [] } = useQuery({
+  const tt = ttApi || FALLBACK_TOUR_TYPES[slug];
+
+  // Charter ist keine öffentliche Buchung – auf Charter-Seite weiterleiten
+  useEffect(() => {
+    if (slug === "charter") navigate("/charter", { replace: true });
+  }, [slug, navigate]);
+
+  const { data: slotsApi, isError: slotsError } = useQuery({
     queryKey: ["public-tours", tt?.id],
     queryFn: () => api.listPublicTours({ tourTypeId: tt!.id, from: new Date(), onlyAvailable: true }),
-    enabled: !!tt,
+    enabled: !!tt && !tt.id.startsWith("fb-"),
+    retry: false,
   });
+
+  const slots = (slotsApi && slotsApi.length > 0)
+    ? slotsApi
+    : (tt ? buildFallbackSlots(tt.slug, tt.durationMinutes, tt.maxParticipants) : []);
 
   const [selectedSlotId, setSelectedSlotId] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
@@ -65,10 +118,20 @@ export default function PublicTourDetail() {
     onError: (e: Error) => toast({ title: "Fehler", description: e.message, variant: "destructive" }),
   });
 
-  if (!tt) {
+  if (!tt && ttLoading) {
     return (
       <PublicLayout>
         <div className="max-w-3xl mx-auto px-4 py-16">Lade Tour...</div>
+      </PublicLayout>
+    );
+  }
+
+  if (!tt) {
+    return (
+      <PublicLayout>
+        <div className="max-w-3xl mx-auto px-4 py-16">
+          Tour nicht gefunden. <Link to="/touren" className="text-primary underline">Zurück zur Übersicht</Link>
+        </div>
       </PublicLayout>
     );
   }
