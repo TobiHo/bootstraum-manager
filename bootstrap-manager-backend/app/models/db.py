@@ -226,7 +226,7 @@ class CaptainAbsence(Base):
 
 
 class Payment(Base):
-    """Payment - records of online payments via Paddle (or others)"""
+    """Payment - records of online payments via Stripe (or others)"""
 
     __tablename__ = "payment"
 
