@@ -37,7 +37,7 @@ export default function PublicCharter() {
         notes,
       });
       try {
-        const { checkout_url } = await api.createPaddleCheckout(booking.id);
+        const { checkout_url } = await api.createStripeCheckout(booking.id);
         window.location.href = checkout_url;
       } catch {
         // Online payment optional – booking stays pending for manual confirmation
