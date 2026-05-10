@@ -142,6 +142,7 @@ def init_db():
                 "price_per_ticket": 14.50,
                 "min_participants": 1,
                 "max_participants": 25,
+                "category": "rundfahrt",
             },
             {
                 "slug": "charter",
@@ -151,6 +152,7 @@ def init_db():
                 "price_per_ticket": 290.00,
                 "min_participants": 1,
                 "max_participants": 25,
+                "category": "event",
             },
             {
                 "slug": "punsch",
@@ -160,6 +162,7 @@ def init_db():
                 "price_per_ticket": 18.50,
                 "min_participants": 1,
                 "max_participants": 25,
+                "category": "event",
             },
             {
                 "slug": "ranger",
@@ -169,6 +172,7 @@ def init_db():
                 "price_per_ticket": 9.50,
                 "min_participants": 1,
                 "max_participants": 25,
+                "category": "event",
             },
             {
                 "slug": "sundowner",
@@ -178,6 +182,7 @@ def init_db():
                 "price_per_ticket": 22.00,
                 "min_participants": 1,
                 "max_participants": 25,
+                "category": "event",
             },
             {
                 "slug": "cliquentour",
@@ -187,6 +192,7 @@ def init_db():
                 "price_per_ticket": 26.00,
                 "min_participants": 1,
                 "max_participants": 25,
+                "category": "event",
             },
         ]
         for data in tour_types_seed:
