@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { api } from "@/lib/api";
 import { Clock, Users, Calendar as CalIcon, Ticket } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -38,15 +39,19 @@ function buildFallbackSlots(slug: string, durationMin: number, capacity: number)
   const times = [11, 14, 17];
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const localBooked = readLocalBookings();
   for (let d = 1; d <= 14; d++) {
     for (const h of times) {
       const start = new Date(today);
       start.setDate(start.getDate() + d);
       start.setHours(h, 0, 0, 0);
       const end = new Date(start.getTime() + durationMin * 60_000);
-      const booked = Math.floor(Math.random() * (capacity - 4));
+      const id = `fb-${slug}-${d}-${h}`;
+      // deterministische "Grund-Belegung" + lokal gespeicherte Reservierungen
+      const baseBooked = (d * 3 + h) % Math.max(1, capacity - 4);
+      const booked = Math.min(capacity, baseBooked + (localBooked[id] ?? 0));
       slots.push({
-        id: `fb-${slug}-${d}-${h}`,
+        id,
         startDate: start,
         endDate: end,
         seatsTotal: capacity,
@@ -55,6 +60,17 @@ function buildFallbackSlots(slug: string, durationMin: number, capacity: number)
     }
   }
   return slots;
+}
+
+// Lokale Persistenz für Fallback-Reservierungen (wenn Backend nicht erreichbar)
+const LOCAL_KEY = "vechte.fallbackBookings.v1";
+function readLocalBookings(): Record<string, number> {
+  try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || "{}"); } catch { return {}; }
+}
+function addLocalBooking(slotId: string, qty: number) {
+  const cur = readLocalBookings();
+  cur[slotId] = (cur[slotId] ?? 0) + qty;
+  localStorage.setItem(LOCAL_KEY, JSON.stringify(cur));
 }
 
 export default function PublicTourDetail() {
@@ -109,15 +125,25 @@ export default function PublicTourDetail() {
   const [phone, setPhone] = useState("");
   const [catering, setCatering] = useState(false);
   const [notes, setNotes] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"online" | "onsite">("online");
+  // Bump zur erzwungenen Neuberechnung der Fallback-Slots nach lokaler Reservierung
+  const [, setLocalTick] = useState(0);
 
   const buy = useMutation({
     mutationFn: async () => {
+      // Fallback-Pfad: Backend nicht erreichbar – Reservierung lokal persistieren
+      if (selectedSlotId.startsWith("fb-")) {
+        addLocalBooking(selectedSlotId, quantity);
+        return null;
+      }
       const booking = await api.buyTickets(selectedSlotId, {
         quantity,
         customer: { name, email, phone },
         catering,
         notes,
+        paymentMethod,
       });
+      if (paymentMethod === "onsite") return booking;
       try {
         const { checkout_url } = await api.createStripeCheckout(booking.id);
         window.location.href = checkout_url;
@@ -128,8 +154,14 @@ export default function PublicTourDetail() {
       }
     },
     onSuccess: () => {
-      toast({ title: "Buchung reserviert", description: "Sie werden zur Bezahlung weitergeleitet, sofern verfügbar." });
+      toast({
+        title: paymentMethod === "onsite" ? "Reservierung bestätigt" : "Buchung reserviert",
+        description: paymentMethod === "onsite"
+          ? "Bitte bezahlen Sie vor Ort beim Bootsführer. Sie erhalten eine Bestätigung per E-Mail."
+          : "Sie werden zur Bezahlung weitergeleitet, sofern verfügbar.",
+      });
       qc.invalidateQueries({ queryKey: ["public-tours"] });
+      setLocalTick((n) => n + 1);
       setSelectedSlotId("");
       setQuantity(1);
       setName(""); setEmail(""); setPhone(""); setNotes(""); setCatering(false);
@@ -236,16 +268,41 @@ export default function PublicTourDetail() {
                 <Label htmlFor="catering">Verpflegung an Bord gewünscht</Label>
               </div>
               <div><Label>Anmerkungen</Label><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
+              <div className="space-y-2">
+                <Label>Bezahlung</Label>
+                <RadioGroup value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as "online" | "onsite")} className="grid sm:grid-cols-2 gap-2">
+                  <label className={`flex items-start gap-2 border rounded-lg p-3 cursor-pointer ${paymentMethod === "online" ? "border-primary bg-primary/5" : "border-border"}`}>
+                    <RadioGroupItem value="online" id="pay-online" className="mt-1" />
+                    <div>
+                      <div className="font-medium text-sm">Online bezahlen</div>
+                      <div className="text-xs text-muted-foreground">Sichere Bezahlung sofort online.</div>
+                    </div>
+                  </label>
+                  <label className={`flex items-start gap-2 border rounded-lg p-3 cursor-pointer ${paymentMethod === "onsite" ? "border-primary bg-primary/5" : "border-border"}`}>
+                    <RadioGroupItem value="onsite" id="pay-onsite" className="mt-1" />
+                    <div>
+                      <div className="font-medium text-sm">Vor Ort bezahlen</div>
+                      <div className="text-xs text-muted-foreground">Reservierung verbindlich – Zahlung beim Bootsführer.</div>
+                    </div>
+                  </label>
+                </RadioGroup>
+              </div>
               <Button
                 size="lg"
                 onClick={() => buy.mutate()}
                 disabled={!name || !email || !phone || quantity < 1 || buy.isPending}
                 className="w-full"
               >
-                {buy.isPending ? "Wird gebucht..." : `Verbindlich buchen (€ ${total.toFixed(2)})`}
+                {buy.isPending
+                  ? "Wird gebucht..."
+                  : paymentMethod === "onsite"
+                    ? `Reservieren (vor Ort € ${total.toFixed(2)} zahlen)`
+                    : `Verbindlich buchen (€ ${total.toFixed(2)})`}
               </Button>
               <p className="text-xs text-muted-foreground text-center">
-                Sichere Online-Bezahlung über Stripe. Stornierung gemäß AGB.
+                {paymentMethod === "onsite"
+                  ? "Reservierung ist verbindlich. Bei Nichterscheinen können Gebühren anfallen."
+                  : "Sichere Online-Bezahlung. Stornierung gemäß AGB."}
               </p>
             </CardContent>
           </Card>

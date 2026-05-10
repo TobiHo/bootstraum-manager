@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { api } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import charterImg from "@/assets/vvv/ganzer-tag.jpg";
@@ -36,6 +37,7 @@ export default function PublicCharter() {
   const [phone, setPhone] = useState("");
   const [catering, setCatering] = useState(false);
   const [notes, setNotes] = useState(type !== "charter" ? `Tour-Wunsch: ${meta.title}` : "");
+  const [paymentMethod, setPaymentMethod] = useState<"online" | "onsite">("online");
 
   const create = useMutation({
     mutationFn: async () => {
@@ -47,7 +49,10 @@ export default function PublicCharter() {
         customer: { name, email, phone },
         catering,
         notes,
+        tourType: type !== "charter" ? meta.title : undefined,
+        paymentMethod,
       });
+      if (paymentMethod === "onsite") return booking;
       try {
         const { checkout_url } = await api.createStripeCheckout(booking.id);
         window.location.href = checkout_url;
@@ -57,7 +62,12 @@ export default function PublicCharter() {
       return booking;
     },
     onSuccess: () => {
-      toast({ title: "Anfrage übermittelt", description: "Sie werden ggf. zur Bezahlung weitergeleitet." });
+      toast({
+        title: paymentMethod === "onsite" ? "Reservierung bestätigt" : "Anfrage übermittelt",
+        description: paymentMethod === "onsite"
+          ? "Zahlung erfolgt vor Ort. Wir bestätigen den Termin per E-Mail."
+          : "Sie werden ggf. zur Bezahlung weitergeleitet.",
+      });
       setBoatId(""); setStart(""); setEnd(""); setParticipants(2);
       setName(""); setEmail(""); setPhone(""); setNotes(""); setCatering(false);
     },
@@ -111,13 +121,34 @@ export default function PublicCharter() {
               <Label htmlFor="catering">Verpflegung an Bord gewünscht</Label>
             </div>
             <div><Label>Anmerkungen</Label><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
+            <div className="space-y-2">
+              <Label>Bezahlung</Label>
+              <RadioGroup value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as "online" | "onsite")} className="grid sm:grid-cols-2 gap-2">
+                <label className={`flex items-start gap-2 border rounded-lg p-3 cursor-pointer ${paymentMethod === "online" ? "border-primary bg-primary/5" : "border-border"}`}>
+                  <RadioGroupItem value="online" id="pm-online" className="mt-1" />
+                  <div>
+                    <div className="font-medium text-sm">Online bezahlen</div>
+                    <div className="text-xs text-muted-foreground">Sofortige sichere Bezahlung.</div>
+                  </div>
+                </label>
+                <label className={`flex items-start gap-2 border rounded-lg p-3 cursor-pointer ${paymentMethod === "onsite" ? "border-primary bg-primary/5" : "border-border"}`}>
+                  <RadioGroupItem value="onsite" id="pm-onsite" className="mt-1" />
+                  <div>
+                    <div className="font-medium text-sm">Vor Ort bezahlen</div>
+                    <div className="text-xs text-muted-foreground">Verbindliche Reservierung, Zahlung beim Bootsführer.</div>
+                  </div>
+                </label>
+              </RadioGroup>
+            </div>
             <Button
               size="lg"
               className="w-full"
               disabled={!boatId || !start || !end || !name || !email || !phone || create.isPending}
               onClick={() => create.mutate()}
             >
-              {create.isPending ? "Wird übermittelt..." : "Anfrage senden"}
+              {create.isPending
+                ? "Wird übermittelt..."
+                : paymentMethod === "onsite" ? "Verbindlich reservieren" : "Anfrage senden"}
             </Button>
             <p className="text-xs text-muted-foreground text-center">
               Wir bestätigen Ihre Buchung innerhalb eines Werktages und ordnen automatisch einen freien Bootsführer zu.
