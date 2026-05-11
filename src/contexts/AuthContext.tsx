@@ -23,12 +23,22 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 function resolveApiBase(): string {
+  const normalize = (value: string) => {
+    const trimmed = value.trim().replace(/\/$/, "");
+    if (!trimmed) return "";
+    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  };
+
+  const isBrowser = typeof window !== "undefined";
+  const isSecureHostedPage = isBrowser && window.location.protocol === "https:" && !["localhost", "127.0.0.1"].includes(window.location.hostname);
+  const isLocalApi = (value: string) => /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:|\/|$)/i.test(value.trim());
+
   try {
-    const override = typeof window !== "undefined" ? window.localStorage.getItem("api_base_url") : null;
-    if (override) return override.replace(/\/$/, "");
+    const override = isBrowser ? window.localStorage.getItem("api_base_url") : null;
+    if (override && !(isSecureHostedPage && isLocalApi(override))) return normalize(override);
   } catch { /* ignore */ }
   const env = import.meta.env.VITE_API_BASE_URL;
-  if (env) return String(env).replace(/\/$/, "");
+  if (env && !(isSecureHostedPage && isLocalApi(String(env)))) return normalize(String(env));
   // Same-origin: dev uses Vite proxy, prod uses Vercel rewrite to Railway.
   return "";
 }
