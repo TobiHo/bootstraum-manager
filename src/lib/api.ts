@@ -1,6 +1,28 @@
 import { Boat, BookingData, Captain, TourType, PublicTour, CaptainAbsence } from "@/types/booking";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+/**
+ * Resolve the API base URL.
+ *
+ * Priority:
+ *   1. localStorage("api_base_url")  → live override (admin can set in console)
+ *   2. VITE_API_BASE_URL              → build-time configuration
+ *   3. ""                             → same-origin (use Vite proxy in dev,
+ *                                       reverse proxy in prod) — avoids
+ *                                       Mixed-Content errors on HTTPS hosts.
+ */
+function resolveApiBase(): string {
+  try {
+    const override = typeof window !== "undefined" ? window.localStorage.getItem("api_base_url") : null;
+    if (override) return override.replace(/\/$/, "");
+  } catch {
+    /* localStorage unavailable */
+  }
+  const env = import.meta.env.VITE_API_BASE_URL;
+  if (env) return String(env).replace(/\/$/, "");
+  return "";
+}
+
+const API_BASE_URL = resolveApiBase();
 
 export interface User {
   id: number;
