@@ -13,6 +13,9 @@ from app.domain.user import UserRole
 class UserService:
     """Service for user business logic"""
 
+    PUBLIC_SYSTEM_EMAIL = "system@vvv-nordhorn.de"
+    LEGACY_PUBLIC_SYSTEM_EMAIL = "system@vechte.local"
+
     def __init__(self, db: Session):
         """
         Initialize user service
@@ -54,6 +57,24 @@ class UserService:
 
         created_user = self.repo.create(user)
         return UserResponse.from_orm(created_user)
+
+    def get_or_create_public_system_user(self) -> User:
+        """Return the internal creator user for unauthenticated public bookings."""
+        user = (
+            self.db.query(User)
+            .filter(User.email.in_([self.LEGACY_PUBLIC_SYSTEM_EMAIL, self.PUBLIC_SYSTEM_EMAIL]))
+            .first()
+        )
+        if user:
+            return user
+
+        system_user = User(
+            email=self.PUBLIC_SYSTEM_EMAIL,
+            password_hash=hash_password("system-not-loginable-1234"),
+            name="System (Public Bookings)",
+            role=UserRole.CUSTOMER,
+        )
+        return self.repo.create(system_user)
 
     def authenticate(self, email: str, password: str) -> Optional[User]:
         """
