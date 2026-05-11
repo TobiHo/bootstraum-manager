@@ -22,7 +22,17 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+function resolveApiBase(): string {
+  try {
+    const override = typeof window !== "undefined" ? window.localStorage.getItem("api_base_url") : null;
+    if (override) return override.replace(/\/$/, "");
+  } catch { /* ignore */ }
+  const env = import.meta.env.VITE_API_BASE_URL;
+  if (env) return String(env).replace(/\/$/, "");
+  // Same-origin: dev uses Vite proxy, prod uses Vercel rewrite to Railway.
+  return "";
+}
+const API_BASE_URL = resolveApiBase();
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);

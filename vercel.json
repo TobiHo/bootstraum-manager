@@ -5,14 +5,7 @@
       "destination": "https://bootstraum-manager-production.up.railway.app/api/:path*"
     },
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
-  ]
-}
-  "rewrites": [
-    {
-      "source": "/(.*)",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ]
