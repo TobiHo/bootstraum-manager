@@ -3,12 +3,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.db.database import get_db
-from app.models.db import Boat, Booking, User
+from app.models.db import Boat, Booking
 from app.models.schemas import CharterRequest, BookingResponse
 from app.repositories.booking_repo import BookingRepository
 from app.services.captain_assignment_service import CaptainAssignmentService
 from app.services.user_service import UserService
-from app.models.schemas import UserCreate
 from app.domain.booking import BookingStatus
 
 
@@ -34,16 +33,7 @@ def create_public_charter(payload: CharterRequest, db: Session = Depends(get_db)
 
     captain_id = CaptainAssignmentService(db).assign(payload.boat_id, payload.start_date, payload.end_date)
 
-    system_user = (
-        db.query(User)
-        .filter(User.email.in_(["system@vechte.local", "system@vvv-nordhorn.de"]))
-        .first()
-    )
-    if not system_user:
-        system_user = UserService(db).register(UserCreate(
-            email="system@vvv-nordhorn.de", password="system-not-loginable-1234",
-            name="System (Public Bookings)", role="customer",
-        ))
+    system_user = UserService(db).get_or_create_public_system_user()
 
     booking = Booking(
         boat_id=payload.boat_id,
