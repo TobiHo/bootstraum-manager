@@ -4,11 +4,8 @@ import { Boat, BookingData, Captain, TourType, PublicTour, CaptainAbsence } from
  * Resolve the API base URL.
  *
  * Priority:
- *   1. localStorage("api_base_url")  → live override (admin can set in console)
- *   2. VITE_API_BASE_URL              → build-time configuration
- *   3. ""                             → same-origin (use Vite proxy in dev,
- *                                       reverse proxy in prod) — avoids
- *                                       Mixed-Content errors on HTTPS hosts.
+ *   Production browsers always use same-origin /api so Vercel rewrites the
+ *   request to Railway. Local development may still use an override/env target.
  */
 function resolveApiBase(): string {
   const normalize = (value: string) => {
@@ -18,17 +15,20 @@ function resolveApiBase(): string {
   };
 
   const isBrowser = typeof window !== "undefined";
-  const isSecureHostedPage = isBrowser && window.location.protocol === "https:" && !["localhost", "127.0.0.1"].includes(window.location.hostname);
-  const isLocalApi = (value: string) => /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:|\/|$)/i.test(value.trim());
+  const isLocalPage = isBrowser && ["localhost", "127.0.0.1"].includes(window.location.hostname);
+
+  if (isBrowser && !isLocalPage) {
+    return "";
+  }
 
   try {
     const override = isBrowser ? window.localStorage.getItem("api_base_url") : null;
-    if (override && !(isSecureHostedPage && isLocalApi(override))) return normalize(override);
+    if (override) return normalize(override);
   } catch {
     /* localStorage unavailable */
   }
   const env = import.meta.env.VITE_API_BASE_URL;
-  if (env && !(isSecureHostedPage && isLocalApi(String(env)))) return normalize(String(env));
+  if (env) return normalize(String(env));
   return "";
 }
 
