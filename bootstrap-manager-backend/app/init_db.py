@@ -15,6 +15,11 @@ def _ensure_columns():
     additions = [
         ("tour_type", "category", "VARCHAR(20) DEFAULT 'rundfahrt' NOT NULL"),
         ("public_tour", "cancellation_reason", "VARCHAR(500)"),
+        ("booking", "booking_kind", "VARCHAR(20) DEFAULT 'charter' NOT NULL"),
+        ("booking", "catering", "BOOLEAN DEFAULT FALSE NOT NULL"),
+        ("booking", "total_price", "FLOAT DEFAULT 0.0 NOT NULL"),
+        ("booking", "payment_status", "VARCHAR(20) DEFAULT 'unpaid' NOT NULL"),
+        ("booking", "public_tour_id", "INTEGER"),
     ]
     with engine.begin() as conn:
         for table, col, ddl in additions:
