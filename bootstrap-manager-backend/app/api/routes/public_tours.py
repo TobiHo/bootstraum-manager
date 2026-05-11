@@ -308,15 +308,8 @@ def buy_tickets(
     total = (tt.price_per_ticket if tt else 0.0) * payload.quantity
 
     # Find or create a system "public-bookings" user as creator (created_by_id required NOT NULL).
-    # Keep the old lookup for existing production data, but create only with a valid public domain.
-    system_user = db.query(User).filter(User.email.in_(["system@vechte.local", "system@vvv-nordhorn.de"])).first()
-    if not system_user:
-        from app.services.user_service import UserService
-        from app.models.schemas import UserCreate
-        system_user = UserService(db).register(UserCreate(
-            email="system@vvv-nordhorn.de", password="system-not-loginable-1234",
-            name="System (Public Bookings)", role="customer",
-        ))
+    from app.services.user_service import UserService
+    system_user = UserService(db).get_or_create_public_system_user()
 
     booking = Booking(
         boat_id=pt.boat_id,
