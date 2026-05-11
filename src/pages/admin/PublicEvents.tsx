@@ -16,8 +16,24 @@ export default function AdminPublicEvents() {
   const eventTourTypeNames = new Set(
     tourTypes.filter((t) => (t.category ?? "rundfahrt") === "event").map((t) => t.name.toLowerCase())
   );
+  // Bekannte Event-Slugs als Fallback (falls TourType-Kategorie noch nicht gepflegt ist)
+  const knownEventKeywords = ["sundowner", "punsch", "cliquentour", "ranger", "event", "charter"];
+  const isEventBooking = (b: typeof bookings[number]) => {
+    if (b.bookingKind === "public") {
+      // Alle Shop-Tickets gehören zu öffentlichen Touren – zeige sie hier an,
+      // wenn sie keine reine Rundfahrt sind.
+      const t = (b.tourType ?? "").toLowerCase();
+      if (!t) return true;
+      if (t.includes("rundfahrt")) return false;
+      return true;
+    }
+    const t = (b.tourType ?? "").toLowerCase();
+    if (!t) return false;
+    if (eventTourTypeNames.has(t)) return true;
+    return knownEventKeywords.some((kw) => t.includes(kw));
+  };
   const eventBookings = bookings
-    .filter((b) => b.tourType && eventTourTypeNames.has(b.tourType.toLowerCase()))
+    .filter(isEventBooking)
     .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
 
   const boatName = (id: string) => boats.find((x) => x.id === id)?.name ?? "—";
