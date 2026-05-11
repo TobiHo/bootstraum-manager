@@ -10,7 +10,8 @@ import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
-// Setup German locale
+// Setup German locale (week starts Monday, Mon-Sun)
+moment.updateLocale("de", { week: { dow: 1, doy: 4 } });
 moment.locale("de");
 const localizer = momentLocalizer(moment);
 
