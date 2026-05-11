@@ -226,7 +226,7 @@ export const api = {
     await request<void>(`/api/captains/${id}`, { method: "DELETE" });
   },
   async listBookings() {
-    return (await request<ApiBooking[]>("/api/bookings")).map(toBooking);
+    return (await request<ApiBooking[]>("/api/bookings?limit=1000")).map(toBooking);
   },
   async createBooking(booking: Omit<BookingData, "id" | "createdAt">) {
     return toBooking(await request<ApiBooking>("/api/bookings", {
