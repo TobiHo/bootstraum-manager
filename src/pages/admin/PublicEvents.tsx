@@ -52,7 +52,7 @@ export default function AdminPublicEvents() {
               <p className="text-muted-foreground">Keine Event-Buchungen vorhanden.</p>
             )}
             {eventBookings.map((b) => {
-              const isShop = (b as any).bookingKind === "public" || (b as any).booking_kind === "public";
+              const isShop = b.bookingKind === "public";
               return (
                 <div key={b.id} className="flex items-center justify-between gap-3 border rounded-lg p-3">
                   <div className="min-w-0">
