@@ -9,6 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api } from "@/lib/api";
 import { formatPrice } from "@/lib/pricing";
+import { Badge } from "@/components/ui/badge";
+import { format, parseISO } from "date-fns";
+import { de } from "date-fns/locale";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line, Legend,
 } from "recharts";
@@ -218,6 +221,101 @@ function CustomersTab({ filters }: { filters: Filters }) {
   );
 }
 
+function ScheduleList({ kind, filters }: { kind: "captain-schedule" | "boat-schedule"; filters: Filters }) {
+  const { data: boats = [] } = useQuery({ queryKey: ["boats"], queryFn: () => api.listBoats() });
+  const { data: captains = [] } = useQuery({ queryKey: ["captains"], queryFn: () => api.listCaptains() });
+  const { data } = useQuery({ queryKey: [`report-${kind}`, filters], queryFn: () => api.report(kind, toApiParams(filters)) });
+  const boatName = (id: number | string | null | undefined) => boats.find((b) => String(b.id) === String(id))?.name ?? "—";
+  const captainName = (id: number | string | null | undefined) => captains.find((c) => String(c.id) === String(id))?.name ?? "—";
+  if (!data) return <p className="text-muted-foreground">Lädt…</p>;
+  const months: Array<{ month: string; items: any[] }> = data.months || [];
+  if (months.length === 0) return <p className="text-muted-foreground">Keine Termine im aktuellen Filter.</p>;
+  return (
+    <div className="max-h-[70vh] overflow-y-auto pr-2 space-y-6">
+      {months.map((m) => {
+        const d = parseISO(m.month + "-01");
+        return (
+          <div key={m.month}>
+            <div className="sticky top-0 bg-background py-2 z-10 border-b mb-2">
+              <h3 className="text-lg font-semibold">{format(d, "LLLL yyyy", { locale: de })} <span className="text-sm text-muted-foreground font-normal">({m.items.length} Termine)</span></h3>
+            </div>
+            <div className="space-y-2">
+              {m.items.map((it: any) => {
+                const start = parseISO(it.start_date);
+                const end = parseISO(it.end_date);
+                const isPublicTour = it.kind === "public_tour";
+                const isCharter = it.kind === "charter";
+                return (
+                  <Card key={`${it.kind}-${it.id}`}>
+                    <CardContent className="p-3 flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-semibold flex items-center gap-2 flex-wrap">
+                          {isPublicTour ? (
+                            <Badge variant="default">Öff. Tour</Badge>
+                          ) : isCharter ? (
+                            <Badge variant="secondary">Charter</Badge>
+                          ) : (
+                            <Badge variant="outline">Ticket</Badge>
+                          )}
+                          <span>{it.tour_type || "Charter"}</span>
+                          {!isPublicTour && it.customer_name && <span className="text-sm text-muted-foreground">· {it.customer_name}</span>}
+                          {it.status === "cancelled" && <Badge variant="destructive">Storniert</Badge>}
+                        </div>
+                        <div className="text-sm text-muted-foreground mt-1">
+                          {format(start, "EEE, d. MMM HH:mm", { locale: de })} – {format(end, "HH:mm")}
+                          {" · "}Boot: <strong>{boatName(it.boat_id)}</strong>
+                          {" · "}Bootsführer: <strong>{captainName(it.captain_id)}</strong>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {isPublicTour
+                            ? `${it.seats_booked ?? 0} / ${it.seats_total ?? 0} Plätze gebucht`
+                            : `${it.participants ?? 0} P. · ${formatPrice(it.total_price ?? 0)}`}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function CaptainsScheduleTab({ filters }: { filters: Filters }) {
+  const { data: captains = [] } = useQuery({ queryKey: ["captains"], queryFn: () => api.listCaptains() });
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Personal-Plan</CardTitle>
+        <p className="text-sm text-muted-foreground">Wählen Sie oben einen Bootsführer im Filter, um nur dessen Termine zu sehen. Liste ist nach Monat scrollbar.</p>
+        {!filters.captainId && (
+          <p className="text-xs text-muted-foreground mt-1">Aktuell: alle {captains.length} Bootsführer.</p>
+        )}
+      </CardHeader>
+      <CardContent><ScheduleList kind="captain-schedule" filters={filters} /></CardContent>
+    </Card>
+  );
+}
+
+function BoatsScheduleTab({ filters }: { filters: Filters }) {
+  const { data: boats = [] } = useQuery({ queryKey: ["boats"], queryFn: () => api.listBoats() });
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Boote-Plan</CardTitle>
+        <p className="text-sm text-muted-foreground">Wählen Sie oben ein Boot im Filter, um nur dessen Termine zu sehen. Liste ist nach Monat scrollbar.</p>
+        {!filters.boatId && (
+          <p className="text-xs text-muted-foreground mt-1">Aktuell: alle {boats.length} Boote.</p>
+        )}
+      </CardHeader>
+      <CardContent><ScheduleList kind="boat-schedule" filters={filters} /></CardContent>
+    </Card>
+  );
+}
+
 export default function Reports() {
   const [filters, setFilters] = useState<Filters>({});
   return (
@@ -233,13 +331,17 @@ export default function Reports() {
             <TabsTrigger value="finance">Finanzen</TabsTrigger>
             <TabsTrigger value="tours">Touren / Events</TabsTrigger>
             <TabsTrigger value="captains">Personal</TabsTrigger>
+            <TabsTrigger value="captain-schedule">Personal-Plan</TabsTrigger>
             <TabsTrigger value="boats">Boote</TabsTrigger>
+            <TabsTrigger value="boat-schedule">Boote-Plan</TabsTrigger>
             <TabsTrigger value="customers">Kunden</TabsTrigger>
           </TabsList>
           <TabsContent value="finance" className="mt-6"><FinanceTab filters={filters} /></TabsContent>
           <TabsContent value="tours" className="mt-6"><ToursTab filters={filters} /></TabsContent>
           <TabsContent value="captains" className="mt-6"><CaptainsTab filters={filters} /></TabsContent>
+          <TabsContent value="captain-schedule" className="mt-6"><CaptainsScheduleTab filters={filters} /></TabsContent>
           <TabsContent value="boats" className="mt-6"><BoatsTab filters={filters} /></TabsContent>
+          <TabsContent value="boat-schedule" className="mt-6"><BoatsScheduleTab filters={filters} /></TabsContent>
           <TabsContent value="customers" className="mt-6"><CustomersTab filters={filters} /></TabsContent>
         </Tabs>
       </div>

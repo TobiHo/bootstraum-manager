@@ -16,7 +16,7 @@ export default function AdminPublicEvents() {
   const eventTourTypeNames = new Set(
     tourTypes.filter((t) => (t.category ?? "rundfahrt") === "event").map((t) => t.name.toLowerCase())
   );
-  const manualEventBookings = bookings
+  const eventBookings = bookings
     .filter((b) => b.tourType && eventTourTypeNames.has(b.tourType.toLowerCase()))
     .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
 
@@ -42,32 +42,36 @@ export default function AdminPublicEvents() {
 
         <Card className="mt-10">
           <CardHeader>
-            <CardTitle>Manuelle Event-Buchungen</CardTitle>
+            <CardTitle>Event-Buchungen ({eventBookings.length})</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Direkt im Kalender oder über die Charter-Anfrage angelegte Event-Buchungen (z. B. Cliquentour, Punschfahrt).
+              Alle Event-Buchungen — sowohl Online-Tickets aus dem Shop (Cliquentour, Punsch, Sundowner …) als auch Charter- bzw. Kalender-Buchungen.
             </p>
           </CardHeader>
-          <CardContent className="space-y-2">
-            {manualEventBookings.length === 0 && (
-              <p className="text-muted-foreground">Keine manuellen Event-Buchungen vorhanden.</p>
+          <CardContent className="space-y-2 max-h-[60vh] overflow-y-auto">
+            {eventBookings.length === 0 && (
+              <p className="text-muted-foreground">Keine Event-Buchungen vorhanden.</p>
             )}
-            {manualEventBookings.map((b) => (
-              <div key={b.id} className="flex items-center justify-between gap-3 border rounded-lg p-3">
-                <div className="min-w-0">
-                  <div className="font-semibold flex items-center gap-2">
-                    {b.tourType} · {b.customer.name}
-                    {paymentLabel(b.paymentStatus)}
-                    {b.status === "cancelled" && <Badge variant="destructive">Storniert</Badge>}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {format(b.startDate, "EEE, d. MMM yyyy HH:mm", { locale: de })} – {format(b.endDate, "HH:mm")}
-                    {" · "}Boot: <strong>{boatName(b.boatId)}</strong>
-                    {" · "}Bootsführer: <strong>{captainName(b.captainId)}</strong>
-                    {" · "}{b.participants} P.
+            {eventBookings.map((b) => {
+              const isShop = b.bookingKind === "public";
+              return (
+                <div key={b.id} className="flex items-center justify-between gap-3 border rounded-lg p-3">
+                  <div className="min-w-0">
+                    <div className="font-semibold flex items-center gap-2 flex-wrap">
+                      <Badge variant={isShop ? "default" : "secondary"}>{isShop ? "Shop-Ticket" : "Charter"}</Badge>
+                      {b.tourType} · {b.customer.name}
+                      {paymentLabel(b.paymentStatus)}
+                      {b.status === "cancelled" && <Badge variant="destructive">Storniert</Badge>}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {format(b.startDate, "EEE, d. MMM yyyy HH:mm", { locale: de })} – {format(b.endDate, "HH:mm")}
+                      {" · "}Boot: <strong>{boatName(b.boatId)}</strong>
+                      {" · "}Bootsführer: <strong>{captainName(b.captainId)}</strong>
+                      {" · "}{b.participants} P.
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </CardContent>
         </Card>
       </div>

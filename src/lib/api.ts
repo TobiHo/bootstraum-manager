@@ -145,6 +145,7 @@ const toBooking = (booking: ApiBooking): BookingData => ({
   tourType: booking.tour_type ?? undefined,
   status: booking.status,
   paymentStatus: (booking as any).payment_status ?? "unpaid",
+  bookingKind: ((booking as any).booking_kind ?? "charter") as "charter" | "public",
   createdAt: new Date(booking.created_at),
 });
 
@@ -226,7 +227,7 @@ export const api = {
     await request<void>(`/api/captains/${id}`, { method: "DELETE" });
   },
   async listBookings() {
-    return (await request<ApiBooking[]>("/api/bookings")).map(toBooking);
+    return (await request<ApiBooking[]>("/api/bookings?limit=1000")).map(toBooking);
   },
   async createBooking(booking: Omit<BookingData, "id" | "createdAt">) {
     return toBooking(await request<ApiBooking>("/api/bookings", {
@@ -429,7 +430,7 @@ export const api = {
     );
   },
   // ============ Reports ============
-  async report(kind: "finance" | "tours" | "captains" | "boats" | "customers", params: { from?: Date; to?: Date; boatId?: string; captainId?: string; tourTypeId?: string; paymentMethod?: string } = {}) {
+  async report(kind: "finance" | "tours" | "captains" | "boats" | "customers" | "captain-schedule" | "boat-schedule", params: { from?: Date; to?: Date; boatId?: string; captainId?: string; tourTypeId?: string; paymentMethod?: string } = {}) {
     const qs = new URLSearchParams();
     if (params.from) qs.set("from_date", params.from.toISOString());
     if (params.to) qs.set("to_date", params.to.toISOString());
