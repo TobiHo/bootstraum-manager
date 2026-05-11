@@ -145,6 +145,7 @@ const toBooking = (booking: ApiBooking): BookingData => ({
   tourType: booking.tour_type ?? undefined,
   status: booking.status,
   paymentStatus: (booking as any).payment_status ?? "unpaid",
+  bookingKind: ((booking as any).booking_kind ?? "charter") as "charter" | "public",
   createdAt: new Date(booking.created_at),
 });
 
