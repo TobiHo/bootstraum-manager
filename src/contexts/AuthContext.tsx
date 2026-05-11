@@ -30,11 +30,9 @@ function resolveApiBase(): string {
   };
 
   const isBrowser = typeof window !== "undefined";
-  const isLocalPage = isBrowser && ["localhost", "127.0.0.1"].includes(window.location.hostname);
-
-  if (isBrowser && !isLocalPage) {
-    return "";
-  }
+  const host = isBrowser ? window.location.hostname : "";
+  const isLocalPage = ["localhost", "127.0.0.1"].includes(host);
+  const isVercelHost = /vercel\.app$/i.test(host) || host === "bootstraum-manager.vercel.app";
 
   try {
     const override = isBrowser ? window.localStorage.getItem("api_base_url") : null;
@@ -42,6 +40,10 @@ function resolveApiBase(): string {
   } catch { /* ignore */ }
   const env = import.meta.env.VITE_API_BASE_URL;
   if (env) return normalize(String(env));
+
+  if (isBrowser && !isLocalPage && !isVercelHost) {
+    return "https://bootstraum-manager-production.up.railway.app";
+  }
   // Same-origin: dev uses Vite proxy, prod uses Vercel rewrite to Railway.
   return "";
 }
