@@ -274,3 +274,107 @@ def customers_report(
         e["revenue"] += b.total_price or 0
     rows = sorted(by_cust.values(), key=lambda r: -r["revenue"])[:50]
     return {"rows": rows, "total_customers": len(by_cust)}
+
+
+def _serialize_booking(b: Booking) -> Dict[str, Any]:
+    return {
+        "kind": "charter" if (b.booking_kind or "charter") == "charter" else "public",
+        "id": b.id,
+        "start_date": b.start_date.isoformat(),
+        "end_date": b.end_date.isoformat(),
+        "boat_id": b.boat_id,
+        "captain_id": b.captain_id,
+        "tour_type": b.tour_type,
+        "customer_name": b.customer_name,
+        "customer_email": b.customer_email,
+        "participants": b.participants,
+        "total_price": b.total_price or 0,
+        "payment_status": b.payment_status,
+        "status": b.status.value if hasattr(b.status, "value") else b.status,
+    }
+
+
+def _serialize_public_tour(p: PublicTour, tt_name: Optional[str]) -> Dict[str, Any]:
+    return {
+        "kind": "public_tour",
+        "id": p.id,
+        "start_date": p.start_date.isoformat(),
+        "end_date": p.end_date.isoformat(),
+        "boat_id": p.boat_id,
+        "captain_id": p.captain_id,
+        "tour_type": tt_name,
+        "seats_total": p.seats_total,
+        "seats_booked": p.seats_booked,
+        "status": p.status,
+    }
+
+
+def _group_by_month(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    by_month: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    for it in items:
+        key = it["start_date"][:7]  # YYYY-MM
+        by_month[key].append(it)
+    out = []
+    for k in sorted(by_month.keys()):
+        items_sorted = sorted(by_month[k], key=lambda x: x["start_date"])
+        out.append({"month": k, "items": items_sorted})
+    return out
+
+
+@router.get("/captain-schedule")
+def captain_schedule(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_staff_user),
+    params: dict = Depends(_common_params),
+):
+    """Monats-gruppierte Termin-Liste für einen Bootsführer (oder alle)."""
+    bookings_q = _filters_query(db, **params)
+    bookings = bookings_q.all()
+
+    pq = db.query(PublicTour).filter(PublicTour.status != "cancelled")
+    if params["from_date"]:
+        pq = pq.filter(PublicTour.start_date >= params["from_date"])
+    if params["to_date"]:
+        pq = pq.filter(PublicTour.start_date <= params["to_date"])
+    if params["boat_id"]:
+        pq = pq.filter(PublicTour.boat_id == params["boat_id"])
+    if params["captain_id"]:
+        pq = pq.filter(PublicTour.captain_id == params["captain_id"])
+    if params["tour_type_id"]:
+        pq = pq.filter(PublicTour.tour_type_id == params["tour_type_id"])
+    public_tours = pq.all()
+
+    tour_types = {tt.id: tt.name for tt in db.query(TourType).all()}
+    items: List[Dict[str, Any]] = [_serialize_booking(b) for b in bookings]
+    items += [_serialize_public_tour(p, tour_types.get(p.tour_type_id)) for p in public_tours]
+
+    return {"months": _group_by_month(items), "total": len(items)}
+
+
+@router.get("/boat-schedule")
+def boat_schedule(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_staff_user),
+    params: dict = Depends(_common_params),
+):
+    """Monats-gruppierte Termin-Liste pro Boot (oder alle)."""
+    bookings = _filters_query(db, **params).all()
+
+    pq = db.query(PublicTour).filter(PublicTour.status != "cancelled")
+    if params["from_date"]:
+        pq = pq.filter(PublicTour.start_date >= params["from_date"])
+    if params["to_date"]:
+        pq = pq.filter(PublicTour.start_date <= params["to_date"])
+    if params["boat_id"]:
+        pq = pq.filter(PublicTour.boat_id == params["boat_id"])
+    if params["captain_id"]:
+        pq = pq.filter(PublicTour.captain_id == params["captain_id"])
+    if params["tour_type_id"]:
+        pq = pq.filter(PublicTour.tour_type_id == params["tour_type_id"])
+    public_tours = pq.all()
+
+    tour_types = {tt.id: tt.name for tt in db.query(TourType).all()}
+    items: List[Dict[str, Any]] = [_serialize_booking(b) for b in bookings]
+    items += [_serialize_public_tour(p, tour_types.get(p.tour_type_id)) for p in public_tours]
+
+    return {"months": _group_by_month(items), "total": len(items)}
