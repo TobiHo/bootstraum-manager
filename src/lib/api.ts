@@ -429,7 +429,7 @@ export const api = {
     );
   },
   // ============ Reports ============
-  async report(kind: "finance" | "tours" | "captains" | "boats" | "customers", params: { from?: Date; to?: Date; boatId?: string; captainId?: string; tourTypeId?: string; paymentMethod?: string } = {}) {
+  async report(kind: "finance" | "tours" | "captains" | "boats" | "customers" | "captain-schedule" | "boat-schedule", params: { from?: Date; to?: Date; boatId?: string; captainId?: string; tourTypeId?: string; paymentMethod?: string } = {}) {
     const qs = new URLSearchParams();
     if (params.from) qs.set("from_date", params.from.toISOString());
     if (params.to) qs.set("to_date", params.to.toISOString());
