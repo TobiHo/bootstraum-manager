@@ -73,6 +73,8 @@ export default function PublicCharter() {
     [tourTypes, type]
   );
   const defaultDurationMin = matchedTourType?.durationMinutes ?? (type === "charter" ? 120 : 90);
+  const ticketPrice = matchedTourType?.pricePerTicket ?? 0;
+  const totalPrice = ticketPrice * (participants || 0);
 
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
@@ -228,6 +230,18 @@ export default function PublicCharter() {
                 }
               </p>
             </div>
+            {type !== "charter" && ticketPrice > 0 && (
+              <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex items-center justify-between">
+                <div>
+                  <div className="text-sm text-muted-foreground">Preis pro Person</div>
+                  <div className="text-lg font-semibold text-foreground">{ticketPrice.toFixed(2)} €</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-muted-foreground">Gesamt ({participants} {participants === 1 ? "Person" : "Personen"})</div>
+                  <div className="text-2xl font-bold text-primary">{totalPrice.toFixed(2)} €</div>
+                </div>
+              </div>
+            )}
             <div className="grid sm:grid-cols-2 gap-4">
               <div><Label>Name *</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
               <div><Label>Telefon *</Label><Input value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
