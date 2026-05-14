@@ -10,6 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { de } from "date-fns/locale";
 import { api } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import charterImg from "@/assets/vvv/ganzer-tag.jpg";
@@ -71,6 +76,8 @@ export default function PublicCharter() {
 
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [selectedTime, setSelectedTime] = useState<string>("14:00");
   const [participants, setParticipants] = useState(2);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -78,6 +85,16 @@ export default function PublicCharter() {
   const [catering, setCatering] = useState(false);
   const [notes, setNotes] = useState(type !== "charter" ? `Tour-Wunsch: ${meta.title}` : "");
   const [paymentMethod, setPaymentMethod] = useState<"online" | "onsite">("online");
+
+  // Datum + Uhrzeit -> start
+  useEffect(() => {
+    if (!selectedDate || !selectedTime) { setStart(""); return; }
+    const [hh, mm] = selectedTime.split(":").map(Number);
+    const d = new Date(selectedDate);
+    d.setHours(hh || 0, mm || 0, 0, 0);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    setStart(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
+  }, [selectedDate, selectedTime]);
 
   // Endzeit automatisch aus Startzeit + Tour-Dauer berechnen
   useEffect(() => {
@@ -144,6 +161,7 @@ export default function PublicCharter() {
           : "Sie werden ggf. zur Bezahlung weitergeleitet.",
       });
       setStart(""); setEnd(""); setParticipants(2);
+      setSelectedDate(undefined); setSelectedTime("14:00");
       setName(""); setEmail(""); setPhone(""); setNotes(""); setCatering(false);
     },
     onError: (e: Error) => toast({ title: "Fehler", description: e.message, variant: "destructive" }),
@@ -165,13 +183,39 @@ export default function PublicCharter() {
           <CardContent className="p-6 space-y-4">
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
-                <Label>Start *</Label>
-                <Input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} />
+                <Label>Verfügbarer Tag *</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {selectedDate
+                        ? format(selectedDate, "EEEE, d. MMMM yyyy", { locale: de })
+                        : <span className="text-muted-foreground">Datum wählen</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={setSelectedDate}
+                      disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
+                      weekStartsOn={1}
+                      locale={de}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
               <div>
-                <Label>Ende (automatisch)</Label>
-                <Input type="datetime-local" value={end} readOnly className="bg-muted" />
-                <p className="text-xs text-muted-foreground mt-1">Berechnet aus Tour-Dauer ({defaultDurationMin} Min.)</p>
+                <Label>Uhrzeit *</Label>
+                <Input type="time" value={selectedTime} onChange={(e) => setSelectedTime(e.target.value)} />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Dauer: {defaultDurationMin} Min.{end ? ` (Ende ca. ${end.slice(11, 16)})` : ""}
+                </p>
               </div>
             </div>
             <div>
