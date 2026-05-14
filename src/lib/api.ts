@@ -369,7 +369,7 @@ export const api = {
     }));
   },
   // ============ Public Charter ============
-  async createPublicCharter(payload: { boatId: string; startDate: Date; endDate: Date; participants: number; customer: { name: string; email: string; phone: string }; catering: boolean; notes?: string; tourType?: string; paymentMethod?: "online" | "onsite" }) {
+  async createPublicCharter(payload: { boatId: string; startDate: Date; endDate: Date; participants: number; customer: { name: string; email: string; phone: string }; catering: boolean; notes?: string; tourType?: string; tourTypeSlug?: string; paymentMethod?: "online" | "onsite" }) {
     return toBooking(await request<ApiBooking>("/api/public/charter", {
       method: "POST",
       body: JSON.stringify({
@@ -383,6 +383,7 @@ export const api = {
         catering: payload.catering,
         notes: payload.notes ?? null,
         tour_type: payload.tourType ?? null,
+        tour_type_slug: payload.tourTypeSlug ?? null,
         payment_method: payload.paymentMethod ?? "online",
       }),
     }));
