@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from typing import Optional
 from app.db.database import get_db
 from app.models.db import Boat, Booking, TourType, PublicTour
 from app.models.schemas import CharterRequest, BookingResponse
