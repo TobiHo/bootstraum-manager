@@ -381,6 +381,7 @@ class CharterRequest(BaseModel):
     notes: Optional[str] = Field(None, max_length=1000)
     tour_type: Optional[str] = Field(None, max_length=50)
     payment_method: str = Field("online", pattern="^(online|onsite)$")
+    tour_type_slug: Optional[str] = Field(None, max_length=50)
 
 
 class CaptainAbsenceCreate(BaseModel):
