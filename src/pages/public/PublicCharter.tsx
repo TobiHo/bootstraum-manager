@@ -124,6 +124,7 @@ export default function PublicCharter() {
         catering,
         notes,
         tourType: type !== "charter" ? meta.title : undefined,
+        tourTypeSlug: type !== "charter" ? type : undefined,
         paymentMethod,
       });
       if (paymentMethod === "onsite") return booking;
