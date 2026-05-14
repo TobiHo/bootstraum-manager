@@ -74,7 +74,6 @@ export default function PublicCharter() {
   );
   const defaultDurationMin = matchedTourType?.durationMinutes ?? (type === "charter" ? 120 : 90);
   const ticketPrice = matchedTourType?.pricePerTicket ?? 0;
-  const totalPrice = ticketPrice * (participants || 0);
 
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
