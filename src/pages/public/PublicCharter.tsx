@@ -86,6 +86,7 @@ export default function PublicCharter() {
   const [catering, setCatering] = useState(false);
   const [notes, setNotes] = useState(type !== "charter" ? `Tour-Wunsch: ${meta.title}` : "");
   const [paymentMethod, setPaymentMethod] = useState<"online" | "onsite">("online");
+  const totalPrice = ticketPrice * (participants || 0);
 
   // Datum + Uhrzeit -> start
   useEffect(() => {
