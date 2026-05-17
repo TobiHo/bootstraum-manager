@@ -64,8 +64,12 @@ export function BookingCalendar() {
       }));
   }, [toast]);
 
-  // Convert bookings to calendar events
-  const bookingEvents: CalendarEvent[] = bookings.map(booking => {
+  // Convert bookings to calendar events. Bookings that belong to a public
+  // tour (ticket purchases) are NOT shown as separate events — they are
+  // listed underneath the public tour itself.
+  const bookingEvents: CalendarEvent[] = bookings
+    .filter(booking => !booking.publicTourId)
+    .map(booking => {
     const boat = boats.find(b => b.id === booking.boatId);
     return {
       id: booking.id,
