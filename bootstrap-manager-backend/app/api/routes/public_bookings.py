@@ -2,9 +2,8 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import Optional
 from app.db.database import get_db
-from app.models.db import Boat, Booking, TourType, PublicTour
+from app.models.db import Boat, Booking, TourType
 from app.models.schemas import CharterRequest, BookingResponse
 from app.repositories.booking_repo import BookingRepository
 from app.services.captain_assignment_service import CaptainAssignmentService
@@ -36,54 +35,19 @@ def create_public_charter(payload: CharterRequest, db: Session = Depends(get_db)
 
     system_user = UserService(db).get_or_create_public_system_user()
 
-    # If the customer chose a known event tour type (Sundowner, Punsch, Cliquentour, Ranger),
-    # try to ATTACH the booking to an existing scheduled PublicTour at the same start time.
-    # Only fall back to creating a new PublicTour if no matching slot exists.
-    public_tour: Optional[PublicTour] = None  # type: ignore
-    tt: Optional[TourType] = None
+    # Charter-Route = IMMER exklusive Buchung für die gesamte Gruppe / das ganze Boot.
+    # Auch wenn ein Event-Tour-Typ (Punsch, Sundowner, Cliquen, Ranger …) gewählt wird,
+    # ist die Fahrt privat und teilt KEINE Plätze mit anderen Buchungen.
+    tt: TourType | None = None
     slug = (payload.tour_type_slug or "").strip().lower() or None
     if slug:
         tt = db.query(TourType).filter(TourType.slug == slug).first()
-    if tt and tt.category == "event":
-        # Look for an existing scheduled slot with the same tour type & exact start time.
-        existing = (
-            db.query(PublicTour)
-            .filter(
-                PublicTour.tour_type_id == tt.id,
-                PublicTour.start_date == payload.start_date,
-                PublicTour.status == "scheduled",
-            )
-            .first()
-        )
-        if existing and existing.seats_booked + payload.participants <= existing.seats_total:
-            public_tour = existing
-            public_tour.seats_booked = public_tour.seats_booked + payload.participants
-            # Use the slot's boat & captain for the booking so the entry matches the event.
-            captain_id = public_tour.captain_id or captain_id
-        else:
-            public_tour = PublicTour(
-                tour_type_id=tt.id,
-                boat_id=payload.boat_id,
-                captain_id=captain_id,
-                start_date=payload.start_date,
-                end_date=payload.end_date,
-                seats_total=boat.capacity,
-                seats_booked=payload.participants,
-                status="scheduled",
-            )
-            db.add(public_tour)
-            db.flush()
 
-    booking_kind = "public" if public_tour else "charter"
-    if public_tour and tt:
-        total_price = (tt.price_per_ticket or 0.0) * payload.participants
-        booking_tour_type = tt.name
-    else:
-        total_price = _charter_price(boat.capacity, payload.start_date, payload.end_date)
-        booking_tour_type = payload.tour_type or "Charter"
+    total_price = _charter_price(boat.capacity, payload.start_date, payload.end_date)
+    booking_tour_type = (tt.name if tt else payload.tour_type) or "Charter"
 
     booking = Booking(
-        boat_id=(public_tour.boat_id if public_tour else payload.boat_id),
+        boat_id=payload.boat_id,
         captain_id=captain_id,
         created_by_id=system_user.id,
         start_date=payload.start_date,
@@ -96,10 +60,10 @@ def create_public_charter(payload: CharterRequest, db: Session = Depends(get_db)
         status=BookingStatus.PENDING,
         notes=payload.notes,
         catering=payload.catering,
-        booking_kind=booking_kind,
+        booking_kind="charter",
         total_price=total_price,
         payment_status=("pay_on_site" if payload.payment_method == "onsite" else "unpaid"),
-        public_tour_id=(public_tour.id if public_tour else None),
+        public_tour_id=None,
     )
     db.add(booking)
     db.commit()

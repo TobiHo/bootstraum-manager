@@ -17,8 +17,9 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import publicTourImg from "@/assets/vvv/dsc00926.jpg";
 
-// Touren mit individuellem Buchungs-/Anfrageprozess (kein öffentlicher Slot-Verkauf)
-const SPECIAL_TOUR_SLUGS = new Set(["charter", "punsch", "ranger", "sundowner", "cliquentour"]);
+// Nur reine Exklusivfahrten haben keinen öffentlichen Slot-Verkauf
+// und werden direkt zur Charter-Anfrage geleitet.
+const SPECIAL_TOUR_SLUGS = new Set(["charter"]);
 
 // Fallback-Tour-Typen, falls Backend nicht erreichbar ist
 const FALLBACK_TOUR_TYPES: Record<string, {
@@ -104,8 +105,11 @@ export default function PublicTourDetail() {
     retry: false,
   });
 
-  const slots = (slotsApi && slotsApi.length > 0)
-    ? slotsApi
+  // Echte Backend-Slots bevorzugen. Fallback-Slots NUR wenn das Backend nicht erreichbar ist,
+  // damit Event-Tourtypen ohne geplanten Termin nicht künstlich "frei buchbar" erscheinen.
+  const backendReachable = !!tt && !tt.id.startsWith("fb-") && !slotsError;
+  const slots = backendReachable
+    ? (slotsApi ?? [])
     : (tt ? buildFallbackSlots(tt.slug, tt.durationMinutes, tt.maxParticipants) : []);
 
   // Boote für Anzeige (Name pro Slot)
@@ -248,8 +252,9 @@ export default function PublicTourDetail() {
           </CardContent>
         </Card>
         {filteredSlots.length === 0 ? (
-          <Card><CardContent className="p-8 text-center text-muted-foreground">
-            Keine Termine im gewählten Zeitraum. Sie können <Link to="/charter" className="text-primary underline">ein Boot privat chartern</Link>.
+          <Card><CardContent className="p-8 text-center text-muted-foreground space-y-2">
+            <p>Aktuell keine öffentlichen Termine für diese Tour.</p>
+            <p>Sie können diese Tour als <Link to={`/charter?type=${tt.slug}`} className="text-primary underline">Exklusivfahrt (ganzes Boot)</Link> buchen.</p>
           </CardContent></Card>
         ) : (
         <>
