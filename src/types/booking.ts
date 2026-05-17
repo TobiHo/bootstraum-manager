@@ -37,6 +37,8 @@ export interface BookingData {
   status: 'confirmed' | 'pending' | 'cancelled';
   paymentStatus?: 'unpaid' | 'paid' | 'pay_on_site' | 'refunded';
   bookingKind?: 'charter' | 'public';
+  publicTourId?: string;
+  totalPrice?: number;
   createdAt: Date;
 }
 

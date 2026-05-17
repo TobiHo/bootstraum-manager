@@ -37,25 +37,42 @@ def create_public_charter(payload: CharterRequest, db: Session = Depends(get_db)
     system_user = UserService(db).get_or_create_public_system_user()
 
     # If the customer chose a known event tour type (Sundowner, Punsch, Cliquentour, Ranger),
-    # create a single-occurrence PublicTour so it shows up in the admin event list.
+    # try to ATTACH the booking to an existing scheduled PublicTour at the same start time.
+    # Only fall back to creating a new PublicTour if no matching slot exists.
     public_tour: Optional[PublicTour] = None  # type: ignore
     tt: Optional[TourType] = None
     slug = (payload.tour_type_slug or "").strip().lower() or None
     if slug:
         tt = db.query(TourType).filter(TourType.slug == slug).first()
     if tt and tt.category == "event":
-        public_tour = PublicTour(
-            tour_type_id=tt.id,
-            boat_id=payload.boat_id,
-            captain_id=captain_id,
-            start_date=payload.start_date,
-            end_date=payload.end_date,
-            seats_total=boat.capacity,
-            seats_booked=payload.participants,
-            status="scheduled",
+        # Look for an existing scheduled slot with the same tour type & exact start time.
+        existing = (
+            db.query(PublicTour)
+            .filter(
+                PublicTour.tour_type_id == tt.id,
+                PublicTour.start_date == payload.start_date,
+                PublicTour.status == "scheduled",
+            )
+            .first()
         )
-        db.add(public_tour)
-        db.flush()
+        if existing and existing.seats_booked + payload.participants <= existing.seats_total:
+            public_tour = existing
+            public_tour.seats_booked = public_tour.seats_booked + payload.participants
+            # Use the slot's boat & captain for the booking so the entry matches the event.
+            captain_id = public_tour.captain_id or captain_id
+        else:
+            public_tour = PublicTour(
+                tour_type_id=tt.id,
+                boat_id=payload.boat_id,
+                captain_id=captain_id,
+                start_date=payload.start_date,
+                end_date=payload.end_date,
+                seats_total=boat.capacity,
+                seats_booked=payload.participants,
+                status="scheduled",
+            )
+            db.add(public_tour)
+            db.flush()
 
     booking_kind = "public" if public_tour else "charter"
     if public_tour and tt:
@@ -66,7 +83,7 @@ def create_public_charter(payload: CharterRequest, db: Session = Depends(get_db)
         booking_tour_type = payload.tour_type or "Charter"
 
     booking = Booking(
-        boat_id=payload.boat_id,
+        boat_id=(public_tour.boat_id if public_tour else payload.boat_id),
         captain_id=captain_id,
         created_by_id=system_user.id,
         start_date=payload.start_date,
