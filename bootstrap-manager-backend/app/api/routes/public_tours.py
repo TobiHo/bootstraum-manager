@@ -321,7 +321,7 @@ def buy_tickets(
         customer_name=payload.customer_name,
         customer_email=payload.customer_email,
         customer_phone=payload.customer_phone,
-        tour_type=(tt.name if tt else None),
+        tour_type=(tt.slug if tt else None),
         status=BookingStatus.PENDING,
         notes=payload.notes,
         catering=payload.catering,

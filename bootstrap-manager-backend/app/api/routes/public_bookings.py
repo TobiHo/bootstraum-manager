@@ -44,7 +44,7 @@ def create_public_charter(payload: CharterRequest, db: Session = Depends(get_db)
         tt = db.query(TourType).filter(TourType.slug == slug).first()
 
     total_price = _charter_price(boat.capacity, payload.start_date, payload.end_date)
-    booking_tour_type = (tt.name if tt else payload.tour_type) or "Charter"
+    booking_tour_type = (tt.slug if tt else (payload.tour_type_slug or payload.tour_type)) or "charter"
 
     booking = Booking(
         boat_id=payload.boat_id,

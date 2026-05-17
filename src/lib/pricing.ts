@@ -14,6 +14,7 @@ export function calculatePrice(
       return participants * 11.5;
 
     case "punch_fahrt":
+    case "punsch":
       return participants * 24;
 
     case "ranger":
@@ -39,9 +40,9 @@ export function getDurationHours(startDate: Date | string, endDate: Date | strin
 
 export const TOUR_TYPES = [
   { value: "rundfahrt", label: "Rundfahrt (öffentlich)", pricingHint: "€11,50/Person" },
-  { value: "punch_fahrt", label: "Punch-/Glühweinfahrt", pricingHint: "€24,00/Person" },
+  { value: "punsch", label: "Punsch-/Glühweinfahrt", pricingHint: "€24,00/Person" },
   { value: "sundowner", label: "Sundowner", pricingHint: "€11,50/Person" },
-  { value: "ranger", label: "Ranger-Tour", pricingHint: "€200 (Kinder)" },
+  { value: "ranger", label: "Vechte-Ranger", pricingHint: "€200 (Kinder)" },
   { value: "cliquentour", label: "Cliquentour", pricingHint: "€26/Person o. €330 Pauschal" },
   { value: "charter", label: "Exklusivcharter", pricingHint: "€160–€240/Std" },
 ];

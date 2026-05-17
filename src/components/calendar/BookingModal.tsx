@@ -118,6 +118,11 @@ export function BookingModal({
 
   // Filter captains by selected boat and availability during selected time
   const availableCaptains = captains.filter(captain => {
+    // Always keep the captain currently assigned to this booking visible,
+    // so the Select can render the saved value even if conflicts are detected.
+    if (isEditMode && selectedCaptainId && captain.id === selectedCaptainId) {
+      return true;
+    }
     if (selectedBoatId && !captain.availableBoats.includes(selectedBoatId)) {
       return false;
     }
@@ -131,6 +136,17 @@ export function BookingModal({
     const isCaptainBooked = bookings.some(booking => {
       // Skip current booking if editing
       if (isEditMode && selectedEvent && booking.id === selectedEvent.resource.id) {
+        return false;
+      }
+
+      // Public tours can have multiple bookings sharing the same boat, slot
+      // and captain (one captain per scheduled public tour). Don't treat
+      // those sibling bookings as conflicts.
+      if (
+        booking.boatId === selectedBoatId &&
+        booking.startDate.getTime() === selectedStartTime.getTime() &&
+        booking.endDate.getTime() === selectedEndTime.getTime()
+      ) {
         return false;
       }
 
