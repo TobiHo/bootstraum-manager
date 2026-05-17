@@ -2,7 +2,9 @@
 
 from datetime import datetime, timedelta, time, date
 from app.db.database import SessionLocal, Base, engine
-from app.models.db import User, Boat, Captain, TourType, PublicTour
+from app.models.db import User, Boat, Captain, TourType, PublicTour, Booking
+from app.domain.booking import BookingStatus
+import random
 from app.services.user_service import UserService
 from app.services.captain_assignment_service import CaptainAssignmentService
 from app.models.schemas import UserCreate
@@ -257,9 +259,10 @@ def seed_public_tours(db):
     year = today.year
     if today.month == 12 and today.day > 25:
         year += 1
-    plan_end = date(year + 1, 1, 31)  # cover Dec-Punsch into next January? keep to Dec
     plan_end = date(year, 12, 31)
-    start_day = today
+    # Seed full season including past dates so statistics & calendar history
+    # cover the entire current year.
+    start_day = date(year, 1, 1)
 
     def rundfahrt_slots(d: date):
         m = d.month
@@ -336,6 +339,84 @@ def seed_public_tours(db):
 
     if not total_created:
         print("✓ Public tour slots already up-to-date")
+
+    seed_demo_bookings(db)
+
+
+def seed_demo_bookings(db):
+    """Seed ticket bookings for 01.05.2026 – 17.05.2026 to populate stats."""
+    start = date(2026, 5, 1)
+    end = date(2026, 5, 17)
+    tours = (
+        db.query(PublicTour)
+        .filter(PublicTour.start_date >= datetime.combine(start, time.min))
+        .filter(PublicTour.start_date <= datetime.combine(end, time.max))
+        .all()
+    )
+    if not tours:
+        print("  (no tours in demo booking window – skipping)")
+        return
+
+    system_user = UserService(db).get_or_create_public_system_user()
+    tt_cache = {tt.id: tt for tt in db.query(TourType).all()}
+    rng = random.Random(42)
+    created = 0
+    sample_customers = [
+        ("Familie Meyer", "meyer@example.com", "+49 5921 100001"),
+        ("Lisa Brand", "lisa.brand@example.com", "+49 5921 100002"),
+        ("Tom Janssen", "tom.janssen@example.com", "+49 5921 100003"),
+        ("Sabine Vos", "s.vos@example.com", "+49 5921 100004"),
+        ("Klaas de Boer", "klaas.deboer@example.com", "+49 5921 100005"),
+        ("Marie Schulte", "marie.schulte@example.com", "+49 5921 100006"),
+        ("Familie Albers", "albers@example.com", "+49 5921 100007"),
+        ("Peter Bruns", "peter.bruns@example.com", "+49 5921 100008"),
+    ]
+    payment_options = ["paid", "paid", "paid", "pay_on_site", "unpaid"]
+
+    for pt in tours:
+        if pt.seats_booked > 0:
+            continue  # already has bookings
+        # mix of empty / lightly / well filled tours
+        fill = rng.choices(
+            [0.0, 0.25, 0.5, 0.8, 1.0],
+            weights=[15, 35, 30, 15, 5],
+        )[0]
+        target = int(round(pt.seats_total * fill))
+        if target <= 0:
+            continue
+        tt = tt_cache.get(pt.tour_type_id)
+        price_each = tt.price_per_ticket if tt else 0.0
+        slug = tt.slug if tt else None
+        remaining = target
+        while remaining > 0:
+            qty = min(remaining, rng.choice([1, 2, 2, 3, 4, 5]))
+            customer = rng.choice(sample_customers)
+            payment_status = rng.choice(payment_options)
+            booking = Booking(
+                boat_id=pt.boat_id,
+                captain_id=pt.captain_id,
+                created_by_id=system_user.id,
+                start_date=pt.start_date,
+                end_date=pt.end_date,
+                participants=qty,
+                customer_name=customer[0],
+                customer_email=customer[1],
+                customer_phone=customer[2],
+                tour_type=slug,
+                status=BookingStatus.CONFIRMED,
+                notes=None,
+                catering=False,
+                booking_kind="public",
+                total_price=round(price_each * qty, 2),
+                payment_status=payment_status,
+                public_tour_id=pt.id,
+            )
+            db.add(booking)
+            remaining -= qty
+            created += 1
+        pt.seats_booked = target
+    db.commit()
+    print(f"✓ Seeded {created} demo bookings for {start}–{end}")
 
 
 if __name__ == "__main__":
