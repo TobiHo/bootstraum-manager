@@ -98,7 +98,22 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!response.ok) {
     const error = await response.json().catch(() => null);
-    throw new Error(error?.detail || `API request failed with ${response.status}`);
+    let message: string | undefined;
+    const detail = error?.detail;
+    if (typeof detail === "string") {
+      message = detail;
+    } else if (Array.isArray(detail)) {
+      message = detail
+        .map((d: any) => {
+          if (typeof d === "string") return d;
+          const loc = Array.isArray(d?.loc) ? d.loc.filter((x: any) => x !== "body").join(".") : "";
+          return loc ? `${loc}: ${d?.msg ?? "ungültig"}` : (d?.msg ?? JSON.stringify(d));
+        })
+        .join("; ");
+    } else if (detail && typeof detail === "object") {
+      message = detail.msg || JSON.stringify(detail);
+    }
+    throw new Error(message || `API request failed with ${response.status}`);
   }
 
   if (response.status === 204) {
