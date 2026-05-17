@@ -46,11 +46,11 @@ function hasConflict(boatId: string, start: Date, end: Date): boolean {
 }
 
 const TOUR_LABELS: Record<string, { title: string; intro: string }> = {
-  charter:     { title: "Privates Boot chartern", intro: "Mieten Sie ein komplettes Boot exklusiv für Ihre Gruppe." },
-  punsch:      { title: "Punschfahrt anfragen",   intro: "Heißer Punsch, warme Decken – buchen Sie Ihre winterliche Vechtefahrt." },
-  ranger:      { title: "Vechte-Ranger buchen",   intro: "Die Abenteuer-Tour für Kinder und Familien – Termin direkt im Kalender wählen." },
-  sundowner:   { title: "Sundowner buchen",       intro: "Sonnenuntergang vom Wasser aus erleben – wählen Sie Ihren Wunschtermin." },
-  cliquentour: { title: "Cliquentour anfragen",   intro: "Feiern mit Freunden auf der Vechte – Termin und Boot direkt anfragen." },
+  charter:     { title: "Privates Boot chartern",        intro: "Mieten Sie ein komplettes Boot exklusiv für Ihre Gruppe." },
+  punsch:      { title: "Punschfahrt exklusiv buchen",   intro: "Heißer Punsch, warme Decken – ganzes Boot exklusiv für Ihre Gruppe." },
+  ranger:      { title: "Vechte-Ranger exklusiv buchen", intro: "Die Abenteuer-Tour für Ihre Kindergruppe oder Familie – ganzes Boot exklusiv." },
+  sundowner:   { title: "Sundowner exklusiv buchen",     intro: "Sonnenuntergang vom Wasser aus – ganzes Boot exklusiv für Ihre Gruppe." },
+  cliquentour: { title: "Cliquentour exklusiv buchen",   intro: "Feiern mit Freunden auf der Vechte – ganzes Boot exklusiv für Ihre Clique." },
 };
 
 export default function PublicCharter() {
@@ -73,7 +73,6 @@ export default function PublicCharter() {
     [tourTypes, type]
   );
   const defaultDurationMin = matchedTourType?.durationMinutes ?? (type === "charter" ? 120 : 90);
-  const ticketPrice = matchedTourType?.pricePerTicket ?? 0;
 
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
@@ -86,7 +85,6 @@ export default function PublicCharter() {
   const [catering, setCatering] = useState(false);
   const [notes, setNotes] = useState(type !== "charter" ? `Tour-Wunsch: ${meta.title}` : "");
   const [paymentMethod, setPaymentMethod] = useState<"online" | "onsite">("online");
-  const totalPrice = ticketPrice * (participants || 0);
 
   // Datum + Uhrzeit -> start
   useEffect(() => {
@@ -230,18 +228,15 @@ export default function PublicCharter() {
                 }
               </p>
             </div>
-            {type !== "charter" && ticketPrice > 0 && (
-              <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex items-center justify-between">
-                <div>
-                  <div className="text-sm text-muted-foreground">Preis pro Person</div>
-                  <div className="text-lg font-semibold text-foreground">{ticketPrice.toFixed(2)} €</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm text-muted-foreground">Gesamt ({participants} {participants === 1 ? "Person" : "Personen"})</div>
-                  <div className="text-2xl font-bold text-primary">{totalPrice.toFixed(2)} €</div>
-                </div>
-              </div>
-            )}
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm">
+              <div className="font-semibold text-foreground mb-1">Exklusivfahrt – ganzes Boot</div>
+              <p className="text-muted-foreground">
+                Diese Fahrt ist ausschließlich für Ihre Gruppe reserviert. Der Endpreis wird nach
+                Bestätigung der Buchung berechnet (Boots-Charter pro Stunde, inkl. Bootsführer).
+                Möchten Sie stattdessen ein Einzelticket für eine öffentliche Tour, schauen Sie unter{" "}
+                <a href="/touren" className="text-primary underline">Öffentliche Touren</a> nach freien Terminen.
+              </p>
+            </div>
             <div className="grid sm:grid-cols-2 gap-4">
               <div><Label>Name *</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
               <div><Label>Telefon *</Label><Input value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
