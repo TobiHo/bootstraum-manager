@@ -31,7 +31,16 @@ export function PublicTourManager({ category, title, description }: Props) {
   const { data: tourTypes = [] } = useQuery({ queryKey: ["tour-types"], queryFn: () => api.listTourTypes() });
   const { data: boats = [] } = useQuery({ queryKey: ["boats"], queryFn: () => api.listBoats() });
   const { data: captains = [] } = useQuery({ queryKey: ["captains"], queryFn: () => api.listCaptains() });
-  const filtered = useMemo(() => tourTypes.filter((t) => (t.category ?? "rundfahrt") === category), [tourTypes, category]);
+  // Alle Tour-Typen sind in beiden Admin-Tabs (Öffentliche Touren + Exklusivtouren) wählbar.
+  // Die Kategorie dient nur noch als Default-Sortierung – nicht als Filter.
+  const filtered = useMemo(() => {
+    return [...tourTypes].sort((a, b) => {
+      const ac = (a.category ?? "rundfahrt") === category ? 0 : 1;
+      const bc = (b.category ?? "rundfahrt") === category ? 0 : 1;
+      if (ac !== bc) return ac - bc;
+      return a.name.localeCompare(b.name);
+    });
+  }, [tourTypes, category]);
 
   // filters
   const [from, setFrom] = useState("");
@@ -42,9 +51,8 @@ export function PublicTourManager({ category, title, description }: Props) {
   const [fStatus, setFStatus] = useState<string>("scheduled");
 
   const { data: tours = [], refetch } = useQuery({
-    queryKey: ["public-tours-admin", category, from, to, fBoat, fCaptain, fTourType, fStatus],
+    queryKey: ["public-tours-admin", from, to, fBoat, fCaptain, fTourType, fStatus],
     queryFn: () => api.listPublicTours({
-      category,
       from: from ? new Date(from) : undefined,
       to: to ? new Date(to) : undefined,
       boatId: fBoat !== "all" ? fBoat : undefined,
