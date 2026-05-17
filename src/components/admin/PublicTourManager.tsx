@@ -408,7 +408,9 @@ export function PublicTourManager({ category, title, description }: Props) {
       </Card>
 
       <div className="space-y-2">
-        {tours.map((t) => {
+        {tours
+          .filter((t) => fStatus === "scheduled" ? t.endDate.getTime() >= Date.now() : true)
+          .map((t) => {
           const cancelled = t.status === "cancelled";
           const tourBookings = allBookings.filter((b) => b.publicTourId === t.id);
           const isOpen = !!expanded[t.id];
