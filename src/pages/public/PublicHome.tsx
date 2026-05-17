@@ -82,20 +82,41 @@ export default function PublicHome() {
         </div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {TOUR_ORDER.map((entry) => {
-            const t = findTour(entry.slug);
-            const href = `/touren/${t?.slug ?? entry.slug}`;
-            const duration = t?.durationMinutes ?? entry.duration;
-            const capacity = t?.maxParticipants ?? entry.capacity;
-            const price = t?.pricePerTicket ?? entry.price;
-            const priceLabel = entry.slug === "charter" ? `ab € ${price.toFixed(2)}` : `€ ${price.toFixed(2)}`;
-            const priceSuffix = entry.slug === "charter" ? "pro Boot" : "pro Person";
-            return (
+          {(() => {
+            // Reihenfolge: zuerst die Kern-Touren (TOUR_ORDER), dann alle weiteren aktiven Touren aus dem Backend
+            const knownSlugs = new Set(TOUR_ORDER.map((e) => e.slug));
+            const extras = tourTypes.filter(
+              (t) => !TOUR_ORDER.some((e) => findTour(e.slug)?.slug === t.slug) && !knownSlugs.has(t.slug),
+            );
+            const entries = [
+              ...TOUR_ORDER.map((entry) => ({ entry, t: findTour(entry.slug) })),
+              ...extras.map((t) => ({
+                entry: {
+                  slug: t.slug,
+                  name: t.name,
+                  image: t.imageUrl || heroImg,
+                  tagline: t.description || "",
+                  price: t.pricePerTicket,
+                  duration: t.durationMinutes,
+                  capacity: t.maxParticipants,
+                },
+                t,
+              })),
+            ];
+            return entries.map(({ entry, t }) => {
+              const href = `/touren/${t?.slug ?? entry.slug}`;
+              const duration = t?.durationMinutes ?? entry.duration;
+              const capacity = t?.maxParticipants ?? entry.capacity;
+              const price = t?.pricePerTicket ?? entry.price;
+              const priceLabel = entry.slug === "charter" ? `ab € ${price.toFixed(2)}` : `€ ${price.toFixed(2)}`;
+              const priceSuffix = entry.slug === "charter" ? "pro Boot" : "pro Person";
+              const imgSrc = (t as any)?.imageUrl || entry.image;
+              return (
               <Link key={entry.slug} to={href} className="group">
                 <Card className="overflow-hidden hover:shadow-lg transition h-full flex flex-col border-t-4 border-t-primary/0 hover:border-t-primary">
                   <div className="relative">
                     <img
-                      src={entry.image}
+                      src={imgSrc}
                       alt={entry.name}
                       loading="lazy"
                       width={1024}
@@ -130,8 +151,9 @@ export default function PublicHome() {
                   </CardContent>
                 </Card>
               </Link>
-            );
-          })}
+              );
+            });
+          })()}
         </div>
 
       </section>
