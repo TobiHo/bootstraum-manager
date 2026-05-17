@@ -149,10 +149,6 @@ class Booking(Base):
     __table_args__ = (
         CheckConstraint("end_date > start_date", name="check_booking_end_after_start"),
         CheckConstraint("participants > 0", name="check_booking_participants_positive"),
-        UniqueConstraint(
-            "boat_id", "start_date", "end_date", "status",
-            name="uq_booking_boat_time_confirmed",
-        ),
     )
 
 

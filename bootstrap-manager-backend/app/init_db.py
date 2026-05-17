@@ -40,6 +40,15 @@ def init_db():
     # Create tables
     Base.metadata.create_all(bind=engine)
     _ensure_columns()
+    # Drop legacy unique constraint that prevented multiple public-tour bookings
+    # for the same boat/time slot.
+    try:
+        with engine.begin() as conn:
+            conn.execute(text(
+                "ALTER TABLE booking DROP CONSTRAINT IF EXISTS uq_booking_boat_time_confirmed"
+            ))
+    except Exception as e:
+        print(f"  (skip drop uq_booking_boat_time_confirmed: {e})")
 
     db = SessionLocal()
     try:
