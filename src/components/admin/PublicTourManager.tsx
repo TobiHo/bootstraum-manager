@@ -368,7 +368,11 @@ export function PublicTourManager({ category, title, description }: Props) {
           const tourBookings = allBookings.filter((b) => b.publicTourId === t.id);
           const isOpen = !!expanded[t.id];
           return (
-            <Card key={t.id} className={cancelled ? "border-destructive/40" : ""}>
+            <Card
+              key={t.id}
+              ref={(el) => { rowRefs.current[t.id] = el as HTMLDivElement | null; }}
+              className={cancelled ? "border-destructive/40 transition-shadow" : "transition-shadow"}
+            >
               <CardContent className="p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
