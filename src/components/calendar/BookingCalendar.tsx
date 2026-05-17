@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Calendar, momentLocalizer, Views } from "react-big-calendar";
 import moment from "moment";
 import "moment/locale/de";
@@ -33,6 +34,7 @@ const messages = {
 
 export function BookingCalendar() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [bookings, setBookings] = useState<BookingData[]>([]);
   const [boats, setBoats] = useState<Boat[]>([]);
   const [captains, setCaptains] = useState<Captain[]>([]);
@@ -119,14 +121,17 @@ export function BookingCalendar() {
 
   const handleSelectEvent = useCallback((event: CalendarEvent) => {
     if (typeof event.id === "string" && event.id.startsWith("pt-")) {
-      // Public tour: navigate handled separately; for now just show toast
-      toast({ title: event.title, description: "Öffentlicher Termin – Bearbeitung im Bereich Öffentl. Termine bzw. Events." });
+      const ptId = event.id.slice(3);
+      const pt = publicTours.find((p) => p.id === ptId);
+      const tt = pt ? tourTypes.find((t) => t.id === pt.tourTypeId) : undefined;
+      const target = tt?.category === "event" ? "/admin/public-events" : "/admin/public-tours";
+      navigate(`${target}?expand=${ptId}`);
       return;
     }
     setSelectedEvent(event);
     setSelectedSlot(null);
     setIsModalOpen(true);
-  }, [toast]);
+  }, [navigate, publicTours, tourTypes]);
 
   const handleSaveBooking = useCallback(async (bookingData: Omit<BookingData, 'id' | 'createdAt'>) => {
     try {
