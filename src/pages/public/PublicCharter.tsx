@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -55,8 +56,9 @@ const TOUR_LABELS: Record<string, { title: string; intro: string }> = {
 
 export default function PublicCharter() {
   const [params] = useSearchParams();
-  const type = params.get("type") || "charter";
-  const meta = TOUR_LABELS[type] || TOUR_LABELS.charter;
+  const initialType = params.get("type") || "charter";
+  const [type, setType] = useState<string>(initialType);
+  const meta = TOUR_LABELS[type] || { title: "Exklusivfahrt buchen", intro: "Ganzes Boot exklusiv für Ihre Gruppe." };
   const { data: apiBoats = [] } = useQuery({
     queryKey: ["boats"],
     queryFn: () => api.listBoats().catch(() => [] as Awaited<ReturnType<typeof api.listBoats>>),
@@ -83,7 +85,7 @@ export default function PublicCharter() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [catering, setCatering] = useState(false);
-  const [notes, setNotes] = useState(type !== "charter" ? `Tour-Wunsch: ${meta.title}` : "");
+  const [notes, setNotes] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"online" | "onsite">("online");
 
   // Datum + Uhrzeit -> start
@@ -181,6 +183,37 @@ export default function PublicCharter() {
 
         <Card>
           <CardContent className="p-6 space-y-4">
+            <div>
+              <Label>Tour-Typ *</Label>
+              <Select value={type} onValueChange={setType}>
+                <SelectTrigger><SelectValue placeholder="Tour-Typ wählen" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="charter">Privates Boot chartern (frei)</SelectItem>
+                  {tourTypes
+                    .filter((t) => t.slug !== "charter")
+                    .map((t) => (
+                      <SelectItem key={t.id} value={t.slug}>{t.name}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {matchedTourType && (
+              <div className="rounded-lg border bg-muted/30 p-4 text-sm space-y-1">
+                <div className="font-semibold text-foreground">{matchedTourType.name}</div>
+                {matchedTourType.description && (
+                  <p className="text-muted-foreground">{matchedTourType.description}</p>
+                )}
+                <div className="text-xs text-muted-foreground">
+                  Dauer: {matchedTourType.durationMinutes} Min.
+                  {typeof matchedTourType.pricePerTicket === "number" && matchedTourType.pricePerTicket > 0 && (
+                    <> · Richtpreis pro Person: {matchedTourType.pricePerTicket.toFixed(2)} €</>
+                  )}
+                  {matchedTourType.maxParticipants > 0 && <> · max. {matchedTourType.maxParticipants} Personen</>}
+                </div>
+              </div>
+            )}
+
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
                 <Label>Verfügbarer Tag *</Label>
