@@ -235,7 +235,21 @@ export default function PublicTourDetail() {
           <Card><CardContent className="p-4 flex items-center gap-2 text-sm"><Ticket className="h-4 w-4 text-primary" /> € {tt.pricePerTicket.toFixed(2)} pro Ticket</CardContent></Card>
         </div>
 
-        <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><CalIcon className="h-5 w-5" /> Verfügbare Termine</h2>
+        {tt.slug !== "rundfahrt" && tt.slug !== "charter" && (
+          <Card className="mb-6 border-primary/30 bg-primary/5">
+            <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+              <div className="text-sm">
+                <div className="font-semibold text-foreground">Für eine Gruppe? Buchen Sie diese Tour exklusiv.</div>
+                <div className="text-muted-foreground">Ganzes Boot, nur für Ihre Gruppe – ideal für Firmen, Geburtstage und Cliquen.</div>
+              </div>
+              <Button asChild variant="outline">
+                <Link to={`/charter?type=${tt.slug}`}>Exklusivfahrt anfragen</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><CalIcon className="h-5 w-5" /> Verfügbare Termine für Einzelplätze</h2>
         <Card className="mb-4">
           <CardContent className="p-4 grid sm:grid-cols-3 gap-3 items-end">
             <div>
