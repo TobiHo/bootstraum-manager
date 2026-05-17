@@ -12,7 +12,7 @@ import { api } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { Plus, Pencil, X, CalendarRange, Trash2 } from "lucide-react";
+import { Plus, Pencil, X, CalendarRange, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import type { PublicTour, TourType, Boat, Captain } from "@/types/booking";
 
 type Props = {
@@ -54,6 +54,22 @@ export function PublicTourManager({ category, title, description }: Props) {
       includeCancelled: fStatus === "all",
     }),
   });
+
+  const { data: allBookings = [] } = useQuery({
+    queryKey: ["bookings"],
+    queryFn: () => api.listBookings(),
+  });
+
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const toggle = (id: string) => setExpanded((p) => ({ ...p, [id]: !p[id] }));
+  const paymentLabel = (s?: string) => {
+    switch (s) {
+      case "paid": return <Badge variant="default">Bezahlt</Badge>;
+      case "pay_on_site": return <Badge variant="secondary">Vor Ort</Badge>;
+      case "refunded": return <Badge variant="outline">Erstattet</Badge>;
+      default: return <Badge variant="destructive">Offen</Badge>;
+    }
+  };
 
   // single create
   const [openSingle, setOpenSingle] = useState(false);
@@ -321,27 +337,59 @@ export function PublicTourManager({ category, title, description }: Props) {
       <div className="space-y-2">
         {tours.map((t) => {
           const cancelled = t.status === "cancelled";
+          const tourBookings = allBookings.filter((b) => b.publicTourId === t.id);
+          const isOpen = !!expanded[t.id];
           return (
             <Card key={t.id} className={cancelled ? "border-destructive/40" : ""}>
-              <CardContent className="p-4 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="font-semibold flex items-center gap-2">
-                    {tourTypeName(t.tourTypeId)}
-                    {cancelled && <Badge variant="destructive">Abgesagt{t.cancellationReason ? `: ${t.cancellationReason}` : ""}</Badge>}
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-semibold flex items-center gap-2">
+                      {tourTypeName(t.tourTypeId)}
+                      {cancelled && <Badge variant="destructive">Abgesagt{t.cancellationReason ? `: ${t.cancellationReason}` : ""}</Badge>}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {format(t.startDate, "EEE, d. MMM yyyy HH:mm", { locale: de })} – {format(t.endDate, "HH:mm")}
+                      {" · "}Boot: <strong>{boatName(t.boatId)}</strong>
+                      {" · "}Bootsführer: <strong>{captainName(t.captainId)}</strong>
+                    </div>
+                    <div className="text-sm">{t.seatsBooked} / {t.seatsTotal} Plätze gebucht · {tourBookings.length} {tourBookings.length === 1 ? "Buchung" : "Buchungen"}</div>
                   </div>
-                  <div className="text-sm text-muted-foreground">
-                    {format(t.startDate, "EEE, d. MMM yyyy HH:mm", { locale: de })} – {format(t.endDate, "HH:mm")}
-                    {" · "}Boot: <strong>{boatName(t.boatId)}</strong>
-                    {" · "}Bootsführer: <strong>{captainName(t.captainId)}</strong>
+                  <div className="flex gap-1">
+                    <Button size="icon" variant="ghost" onClick={() => toggle(t.id)} title={isOpen ? "Buchungen ausblenden" : "Buchungen anzeigen"}>
+                      {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </Button>
+                    <Button size="icon" variant="ghost" onClick={() => startEdit(t)} title="Bearbeiten"><Pencil className="h-4 w-4" /></Button>
+                    {!cancelled && (
+                      <Button size="icon" variant="ghost" onClick={() => setCancelTarget(t)} title="Absagen"><X className="h-4 w-4" /></Button>
+                    )}
                   </div>
-                  <div className="text-sm">{t.seatsBooked} / {t.seatsTotal} Plätze gebucht</div>
                 </div>
-                <div className="flex gap-1">
-                  <Button size="icon" variant="ghost" onClick={() => startEdit(t)} title="Bearbeiten"><Pencil className="h-4 w-4" /></Button>
-                  {!cancelled && (
-                    <Button size="icon" variant="ghost" onClick={() => setCancelTarget(t)} title="Absagen"><X className="h-4 w-4" /></Button>
-                  )}
-                </div>
+                {isOpen && (
+                  <div className="mt-3 pt-3 border-t space-y-2">
+                    {tourBookings.length === 0 && (
+                      <p className="text-sm text-muted-foreground">Noch keine Buchungen für diesen Termin.</p>
+                    )}
+                    {tourBookings.map((b) => (
+                      <div key={b.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm">
+                        <div className="min-w-0">
+                          <div className="font-medium">{b.customer.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {b.customer.email} · {b.customer.phone}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant="outline">{b.participants} {b.participants === 1 ? "Person" : "Personen"}</Badge>
+                          {typeof b.totalPrice === "number" && b.totalPrice > 0 && (
+                            <span className="font-medium">{b.totalPrice.toFixed(2)} €</span>
+                          )}
+                          {paymentLabel(b.paymentStatus)}
+                          {b.status === "cancelled" && <Badge variant="destructive">Storniert</Badge>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           );
