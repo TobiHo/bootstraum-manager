@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -70,6 +71,25 @@ export function PublicTourManager({ category, title, description }: Props) {
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const toggle = (id: string) => setExpanded((p) => ({ ...p, [id]: !p[id] }));
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const expandParam = searchParams.get("expand");
+  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  useEffect(() => {
+    if (!expandParam || tours.length === 0) return;
+    if (!tours.some((t) => t.id === expandParam)) return;
+    setExpanded((p) => ({ ...p, [expandParam]: true }));
+    const el = rowRefs.current[expandParam];
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("ring-2", "ring-primary");
+      setTimeout(() => el.classList.remove("ring-2", "ring-primary"), 2000);
+    }
+    // clear param after handling so re-clicks still trigger
+    const next = new URLSearchParams(searchParams);
+    next.delete("expand");
+    setSearchParams(next, { replace: true });
+  }, [expandParam, tours, searchParams, setSearchParams]);
   const paymentLabel = (s?: string) => {
     switch (s) {
       case "paid": return <Badge variant="default">Bezahlt</Badge>;
