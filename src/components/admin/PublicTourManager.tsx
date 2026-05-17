@@ -520,6 +520,23 @@ export function PublicTourManager({ category, title, description }: Props) {
                 <div><Label>Ende</Label><Input type="datetime-local" value={eEnd} onChange={(e) => setEEnd(e.target.value)} /></div>
               </div>
               <div><Label>Plätze</Label><Input type="number" value={eSeats} onChange={(e) => setESeats(Number(e.target.value))} /></div>
+              <div>
+                <Label>Status</Label>
+                <Select value={eStatus} onValueChange={setEStatus}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="scheduled">Geplant</SelectItem>
+                    <SelectItem value="completed">Abgeschlossen</SelectItem>
+                    <SelectItem value="cancelled">Abgesagt</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {eStatus === "cancelled" && (
+                <div>
+                  <Label>Absage-Begründung</Label>
+                  <Textarea value={eReason} onChange={(e) => setEReason(e.target.value)} placeholder="z. B. schlechtes Wetter …" />
+                </div>
+              )}
               <Button onClick={() => saveEdit.mutate()} className="w-full" disabled={saveEdit.isPending}>Speichern</Button>
             </div>
           )}
