@@ -222,12 +222,18 @@ def init_db():
 
 
 def seed_public_tours(db):
-    """Seed public Rundfahrten (only) following the operating-season schedule:
-      • April:           1 tour/day  at 15:00
-      • May–September:   2 tours/day at 13:00 and 15:00
-      • October–November: 1 tour/day at 15:00
-    Events (Sundowner, Punsch, Cliquentour, Ranger, Charter) are NOT seeded —
-    they are created manually or via customer bookings on the public site.
+    """Seed recurring public tour series:
+      Rundfahrten:
+        • April:           1× 15:00
+        • Mai–September:   2× 13:00 + 15:00
+        • Oktober–November: 1× 15:00
+      Punschfahrten:
+        • 18.–25. Mai:     1× 15:00
+        • Oktober:         1× 19:00
+        • November–Dezember: 2× 19:00 + 21:00
+      Sundowner:
+        • Juni:            1× 21:00
+        • Juli–September:  2× 21:00 + 22:00
     """
 
     boat = db.query(Boat).filter(Boat.name == "Vechtesonne").first()
@@ -235,21 +241,18 @@ def seed_public_tours(db):
         print("✗ Skipping public tour seeding: Vechtesonne missing")
         return
 
-    rundfahrt = db.query(TourType).filter(TourType.slug == "rundfahrt").first()
-    if not rundfahrt:
-        print("✗ Skipping public tour seeding: tour type 'rundfahrt' missing")
-        return
+    tour_types = {tt.slug: tt for tt in db.query(TourType).all()}
+    assigner = CaptainAssignmentService(db)
 
     today = date.today()
     year = today.year
-    # Plan the upcoming season. If we are already past November, plan next year.
-    if today.month > 11:
+    if today.month == 12 and today.day > 25:
         year += 1
-    season_start = date(year, 4, 1)
-    season_end = date(year, 11, 30)
-    start_day = max(today, season_start)
+    plan_end = date(year + 1, 1, 31)  # cover Dec-Punsch into next January? keep to Dec
+    plan_end = date(year, 12, 31)
+    start_day = today
 
-    def slots_for(d: date):
+    def rundfahrt_slots(d: date):
         m = d.month
         if m == 4 or m in (10, 11):
             return [time(15, 0)]
@@ -257,43 +260,73 @@ def seed_public_tours(db):
             return [time(13, 0), time(15, 0)]
         return []
 
-    duration = rundfahrt.duration_minutes or 90
-    assigner = CaptainAssignmentService(db)
-    created = 0
-    day = start_day
-    while day <= season_end:
-        for slot_time in slots_for(day):
-            start_dt = datetime.combine(day, slot_time)
-            end_dt = start_dt + timedelta(minutes=duration)
-            exists = (
-                db.query(PublicTour)
-                .filter(
-                    PublicTour.boat_id == boat.id,
-                    PublicTour.start_date == start_dt,
-                )
-                .first()
-            )
-            if exists:
-                continue
-            captain_id = assigner.assign(boat.id, start_dt, end_dt)
-            db.add(PublicTour(
-                tour_type_id=rundfahrt.id,
-                boat_id=boat.id,
-                captain_id=captain_id,
-                start_date=start_dt,
-                end_date=end_dt,
-                seats_total=boat.capacity,
-                seats_booked=0,
-                status="scheduled",
-            ))
-            created += 1
-        db.commit()
-        day += timedelta(days=1)
+    def punsch_slots(d: date):
+        m, day_ = d.month, d.day
+        if m == 5 and 18 <= day_ <= 25:
+            return [time(15, 0)]
+        if m == 10:
+            return [time(19, 0)]
+        if m in (11, 12):
+            return [time(19, 0), time(21, 0)]
+        return []
 
-    if created:
-        print(f"✓ Seeded {created} Rundfahrt slots {start_day} → {season_end}")
-    else:
-        print("✓ Rundfahrt slots already up-to-date")
+    def sundowner_slots(d: date):
+        m = d.month
+        if m == 6:
+            return [time(21, 0)]
+        if 7 <= m <= 9:
+            return [time(21, 0), time(22, 0)]
+        return []
+
+    series = [
+        ("rundfahrt", rundfahrt_slots),
+        ("punsch", punsch_slots),
+        ("sundowner", sundowner_slots),
+    ]
+
+    total_created = 0
+    for slug, slots_fn in series:
+        tt = tour_types.get(slug)
+        if not tt:
+            print(f"  (skip seeding {slug}: tour type missing)")
+            continue
+        duration = tt.duration_minutes or 90
+        created = 0
+        day = start_day
+        while day <= plan_end:
+            for slot_time in slots_fn(day):
+                start_dt = datetime.combine(day, slot_time)
+                end_dt = start_dt + timedelta(minutes=duration)
+                exists = (
+                    db.query(PublicTour)
+                    .filter(
+                        PublicTour.boat_id == boat.id,
+                        PublicTour.tour_type_id == tt.id,
+                        PublicTour.start_date == start_dt,
+                    )
+                    .first()
+                )
+                if exists:
+                    continue
+                captain_id = assigner.assign(boat.id, start_dt, end_dt)
+                db.add(PublicTour(
+                    tour_type_id=tt.id,
+                    boat_id=boat.id,
+                    captain_id=captain_id,
+                    start_date=start_dt,
+                    end_date=end_dt,
+                    seats_total=boat.capacity,
+                    seats_booked=0,
+                    status="scheduled",
+                ))
+                created += 1
+            day += timedelta(days=1)
+        db.commit()
+        total_created += created
+        print(f"✓ Seeded {created} {slug} slots through {plan_end}")
+
+    if not total_created:
+        print("✓ Public tour slots already up-to-date")
 
 
 if __name__ == "__main__":
