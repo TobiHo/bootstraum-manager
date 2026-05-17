@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,8 +8,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { api } from "@/lib/api";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
+import { BookingModal } from "@/components/calendar/BookingModal";
+import { BookingData, CalendarEvent } from "@/types/booking";
+import { useToast } from "@/hooks/use-toast";
 
 export function ExclusiveTourManager() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
   const { data: bookings = [] } = useQuery({ queryKey: ["bookings"], queryFn: () => api.listBookings() });
   const { data: tourTypes = [] } = useQuery({ queryKey: ["tour-types"], queryFn: () => api.listTourTypes() });
   const { data: boats = [] } = useQuery({ queryKey: ["boats"], queryFn: () => api.listBoats() });
@@ -19,6 +26,45 @@ export function ExclusiveTourManager() {
   const [to, setTo] = useState("");
   const [fTourType, setFTourType] = useState<string>("all");
   const [fStatus, setFStatus] = useState<string>("all");
+  const [createSlot, setCreateSlot] = useState<{ start: Date; end: Date } | null>(null);
+  const [editBooking, setEditBooking] = useState<BookingData | null>(null);
+
+  const createMut = useMutation({
+    mutationFn: (b: Omit<BookingData, "id" | "createdAt">) =>
+      api.createBooking({ ...b, bookingKind: "charter" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["bookings"] });
+      setCreateSlot(null);
+      toast({ title: "Charter-Tour angelegt" });
+    },
+    onError: (e: any) => toast({ title: "Fehler", description: e.message, variant: "destructive" }),
+  });
+  const updateMut = useMutation({
+    mutationFn: (b: BookingData) => api.updateBooking(b),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["bookings"] });
+      setEditBooking(null);
+      toast({ title: "Buchung aktualisiert" });
+    },
+  });
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => api.deleteBooking(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["bookings"] });
+      setEditBooking(null);
+      toast({ title: "Buchung gelöscht" });
+    },
+  });
+
+  const editEvent: CalendarEvent | null = editBooking
+    ? {
+        id: editBooking.id,
+        title: editBooking.customer.name,
+        start: editBooking.startDate,
+        end: editBooking.endDate,
+        resource: editBooking,
+      }
+    : null;
 
   const boatName = (id: string) => boats.find((b) => b.id === id)?.name ?? "—";
   const captainName = (id: string) => captains.find((c) => c.id === id)?.name ?? "—";
@@ -57,11 +103,25 @@ export function ExclusiveTourManager() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Exklusivtouren</h1>
-        <p className="text-muted-foreground text-sm">
-          Charter-Buchungen – ganze Boote, exklusiv für Gruppen. Filter nach Tour-Typ (Punsch, Sundowner, Rundfahrt …).
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Exklusivtouren</h1>
+          <p className="text-muted-foreground text-sm">
+            Charter-Buchungen – ganze Boote, exklusiv für Gruppen. Filter nach Tour-Typ (Punsch, Sundowner, Rundfahrt …).
+          </p>
+        </div>
+        <Button
+          onClick={() => {
+            const start = new Date();
+            start.setMinutes(0, 0, 0);
+            start.setHours(start.getHours() + 1);
+            const end = new Date(start);
+            end.setHours(end.getHours() + 2);
+            setCreateSlot({ start, end });
+          }}
+        >
+          <Plus className="h-4 w-4 mr-2" /> Charter-Tour anlegen
+        </Button>
       </div>
 
       <Card>
@@ -120,6 +180,19 @@ export function ExclusiveTourManager() {
           ))}
         </CardContent>
       </Card>
+
+      <BookingModal
+        isOpen={!!createSlot || !!editBooking}
+        onClose={() => { setCreateSlot(null); setEditBooking(null); }}
+        selectedSlot={createSlot}
+        selectedEvent={editEvent}
+        boats={boats}
+        captains={captains}
+        bookings={bookings}
+        onSave={async (b) => { await createMut.mutateAsync(b); }}
+        onUpdate={async (b) => { await updateMut.mutateAsync(b); }}
+        onDelete={async (id) => { await deleteMut.mutateAsync(id); }}
+      />
     </div>
   );
 }
