@@ -194,6 +194,8 @@ export function PublicTourManager({ category, title, description }: Props) {
   const [eStart, setEStart] = useState("");
   const [eEnd, setEEnd] = useState("");
   const [eSeats, setESeats] = useState(20);
+  const [eStatus, setEStatus] = useState<string>("scheduled");
+  const [eReason, setEReason] = useState<string>("");
   const startEdit = (t: PublicTour) => {
     setEditing(t);
     setEBoat(t.boatId);
@@ -201,6 +203,8 @@ export function PublicTourManager({ category, title, description }: Props) {
     setEStart(format(t.startDate, "yyyy-MM-dd'T'HH:mm"));
     setEEnd(format(t.endDate, "yyyy-MM-dd'T'HH:mm"));
     setESeats(t.seatsTotal);
+    setEStatus(t.status);
+    setEReason(t.cancellationReason ?? "");
   };
   const saveEdit = useMutation({
     mutationFn: () => api.updatePublicTour(editing!.id, {
@@ -209,6 +213,8 @@ export function PublicTourManager({ category, title, description }: Props) {
       startDate: new Date(eStart),
       endDate: new Date(eEnd),
       seatsTotal: eSeats,
+      status: eStatus,
+      cancellationReason: eStatus === "cancelled" ? eReason : null,
     }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["public-tours-admin"] }); setEditing(null); toast({ title: "Aktualisiert" }); },
     onError: (e: Error) => toast({ title: "Fehler", description: e.message, variant: "destructive" }),
@@ -402,7 +408,9 @@ export function PublicTourManager({ category, title, description }: Props) {
       </Card>
 
       <div className="space-y-2">
-        {tours.map((t) => {
+        {tours
+          .filter((t) => fStatus === "scheduled" ? t.endDate.getTime() >= Date.now() : true)
+          .map((t) => {
           const cancelled = t.status === "cancelled";
           const tourBookings = allBookings.filter((b) => b.publicTourId === t.id);
           const isOpen = !!expanded[t.id];
@@ -512,6 +520,23 @@ export function PublicTourManager({ category, title, description }: Props) {
                 <div><Label>Ende</Label><Input type="datetime-local" value={eEnd} onChange={(e) => setEEnd(e.target.value)} /></div>
               </div>
               <div><Label>Plätze</Label><Input type="number" value={eSeats} onChange={(e) => setESeats(Number(e.target.value))} /></div>
+              <div>
+                <Label>Status</Label>
+                <Select value={eStatus} onValueChange={setEStatus}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="scheduled">Geplant</SelectItem>
+                    <SelectItem value="completed">Abgeschlossen</SelectItem>
+                    <SelectItem value="cancelled">Abgesagt</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {eStatus === "cancelled" && (
+                <div>
+                  <Label>Absage-Begründung</Label>
+                  <Textarea value={eReason} onChange={(e) => setEReason(e.target.value)} placeholder="z. B. schlechtes Wetter …" />
+                </div>
+              )}
               <Button onClick={() => saveEdit.mutate()} className="w-full" disabled={saveEdit.isPending}>Speichern</Button>
             </div>
           )}

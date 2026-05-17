@@ -322,6 +322,8 @@ class PublicTourUpdate(BaseModel):
     end_date: Optional[datetime] = None
     seats_total: Optional[int] = Field(None, gt=0)
     tour_type_id: Optional[int] = None
+    status: Optional[str] = None
+    cancellation_reason: Optional[str] = None
 
 
 class PublicTourCancel(BaseModel):

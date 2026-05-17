@@ -302,7 +302,7 @@ export const api = {
       }),
     }));
   },
-  async updatePublicTour(id: string, p: { tourTypeId?: string; boatId?: string; captainId?: string | null; startDate?: Date; endDate?: Date; seatsTotal?: number }) {
+  async updatePublicTour(id: string, p: { tourTypeId?: string; boatId?: string; captainId?: string | null; startDate?: Date; endDate?: Date; seatsTotal?: number; status?: string; cancellationReason?: string | null }) {
     const body: any = {};
     if (p.tourTypeId) body.tour_type_id = Number(p.tourTypeId);
     if (p.boatId) body.boat_id = Number(p.boatId);
@@ -310,6 +310,8 @@ export const api = {
     if (p.startDate) body.start_date = p.startDate.toISOString();
     if (p.endDate) body.end_date = p.endDate.toISOString();
     if (p.seatsTotal != null) body.seats_total = p.seatsTotal;
+    if (p.status) body.status = p.status;
+    if (p.cancellationReason !== undefined) body.cancellation_reason = p.cancellationReason;
     return toPublicTour(await request<any>(`/api/public-tours/${id}`, {
       method: "PATCH",
       body: JSON.stringify(body),
