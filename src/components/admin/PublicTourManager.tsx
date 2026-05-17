@@ -14,7 +14,8 @@ import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { Plus, Pencil, X, CalendarRange, Trash2, ChevronDown, ChevronUp } from "lucide-react";
-import type { PublicTour, TourType, Boat, Captain } from "@/types/booking";
+import type { PublicTour, TourType, Boat, Captain, BookingData, CalendarEvent } from "@/types/booking";
+import { BookingModal } from "@/components/calendar/BookingModal";
 
 type Props = {
   category: "rundfahrt" | "event";
@@ -97,6 +98,44 @@ export function PublicTourManager({ category, title, description }: Props) {
       case "refunded": return <Badge variant="outline">Erstattet</Badge>;
       default: return <Badge variant="destructive">Offen</Badge>;
     }
+  };
+
+  // payment status quick change
+  const setPaymentMut = useMutation({
+    mutationFn: ({ booking, status }: { booking: BookingData; status: string }) =>
+      api.updateBooking({ ...booking, paymentStatus: status as BookingData["paymentStatus"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["bookings"] });
+      qc.invalidateQueries({ queryKey: ["public-tours-admin"] });
+      toast({ title: "Zahlungsstatus aktualisiert" });
+    },
+    onError: (e: Error) => toast({ title: "Fehler", description: e.message, variant: "destructive" }),
+  });
+
+  // booking edit modal
+  const [editBooking, setEditBooking] = useState<BookingData | null>(null);
+  const editEvent: CalendarEvent | null = editBooking
+    ? {
+        id: editBooking.id,
+        title: editBooking.customer.name,
+        start: editBooking.startDate,
+        end: editBooking.endDate,
+        resource: editBooking,
+      }
+    : null;
+  const handleBookingUpdate = async (b: BookingData) => {
+    await api.updateBooking(b);
+    qc.invalidateQueries({ queryKey: ["bookings"] });
+    qc.invalidateQueries({ queryKey: ["public-tours-admin"] });
+    setEditBooking(null);
+    toast({ title: "Buchung aktualisiert" });
+  };
+  const handleBookingDelete = async (id: string) => {
+    await api.deleteBooking(id);
+    qc.invalidateQueries({ queryKey: ["bookings"] });
+    qc.invalidateQueries({ queryKey: ["public-tours-admin"] });
+    setEditBooking(null);
+    toast({ title: "Buchung gelöscht" });
   };
 
   // single create
@@ -415,8 +454,22 @@ export function PublicTourManager({ category, title, description }: Props) {
                           {typeof b.totalPrice === "number" && b.totalPrice > 0 && (
                             <span className="font-medium">{b.totalPrice.toFixed(2)} €</span>
                           )}
-                          {paymentLabel(b.paymentStatus)}
+                          <Select
+                            value={b.paymentStatus ?? "unpaid"}
+                            onValueChange={(v) => setPaymentMut.mutate({ booking: b, status: v })}
+                          >
+                            <SelectTrigger className="h-7 w-[130px]"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="unpaid">Offen</SelectItem>
+                              <SelectItem value="paid">Bezahlt</SelectItem>
+                              <SelectItem value="pay_on_site">Vor Ort</SelectItem>
+                              <SelectItem value="refunded">Erstattet</SelectItem>
+                            </SelectContent>
+                          </Select>
                           {b.status === "cancelled" && <Badge variant="destructive">Storniert</Badge>}
+                          <Button size="icon" variant="ghost" onClick={() => setEditBooking(b)} title="Buchung bearbeiten">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
                     ))}
@@ -478,6 +531,20 @@ export function PublicTourManager({ category, title, description }: Props) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Booking Edit Modal */}
+      <BookingModal
+        isOpen={!!editBooking}
+        onClose={() => setEditBooking(null)}
+        selectedSlot={null}
+        selectedEvent={editEvent}
+        boats={boats}
+        captains={captains}
+        bookings={allBookings}
+        onSave={async () => {}}
+        onUpdate={handleBookingUpdate}
+        onDelete={handleBookingDelete}
+      />
     </div>
   );
 }
