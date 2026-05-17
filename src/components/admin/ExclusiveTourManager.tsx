@@ -158,7 +158,11 @@ export function ExclusiveTourManager() {
         <CardContent className="space-y-2 max-h-[70vh] overflow-y-auto">
           {filtered.length === 0 && <p className="text-muted-foreground">Keine Charter-Buchungen im Filter.</p>}
           {filtered.map((b) => (
-            <div key={b.id} className="flex items-center justify-between gap-3 border rounded-lg p-3">
+            <div
+              key={b.id}
+              onClick={() => setEditBooking(b)}
+              className="flex items-center justify-between gap-3 border rounded-lg p-3 cursor-pointer hover:bg-accent/40"
+            >
               <div className="min-w-0">
                 <div className="font-semibold flex items-center gap-2 flex-wrap">
                   <Badge variant="secondary">{b.tourType ?? "Charter"}</Badge>
