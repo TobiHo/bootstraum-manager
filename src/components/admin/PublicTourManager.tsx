@@ -194,6 +194,8 @@ export function PublicTourManager({ category, title, description }: Props) {
   const [eStart, setEStart] = useState("");
   const [eEnd, setEEnd] = useState("");
   const [eSeats, setESeats] = useState(20);
+  const [eStatus, setEStatus] = useState<string>("scheduled");
+  const [eReason, setEReason] = useState<string>("");
   const startEdit = (t: PublicTour) => {
     setEditing(t);
     setEBoat(t.boatId);
@@ -201,6 +203,8 @@ export function PublicTourManager({ category, title, description }: Props) {
     setEStart(format(t.startDate, "yyyy-MM-dd'T'HH:mm"));
     setEEnd(format(t.endDate, "yyyy-MM-dd'T'HH:mm"));
     setESeats(t.seatsTotal);
+    setEStatus(t.status);
+    setEReason(t.cancellationReason ?? "");
   };
   const saveEdit = useMutation({
     mutationFn: () => api.updatePublicTour(editing!.id, {
@@ -209,6 +213,8 @@ export function PublicTourManager({ category, title, description }: Props) {
       startDate: new Date(eStart),
       endDate: new Date(eEnd),
       seatsTotal: eSeats,
+      status: eStatus,
+      cancellationReason: eStatus === "cancelled" ? eReason : null,
     }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["public-tours-admin"] }); setEditing(null); toast({ title: "Aktualisiert" }); },
     onError: (e: Error) => toast({ title: "Fehler", description: e.message, variant: "destructive" }),
